@@ -1,0 +1,62 @@
+#! /usr/bin/env python
+
+"""Generate a list of arguments, one per line, with first arg
+before each item on stdin.
+
+You might want to use its output with xargs, or if you're really
+stuck inside $()
+
+e.g. assuming myargs.txt looks like this:
+
+$ cat myargs.txt
+a
+b
+c
+
+You get this:
+
+$ cat myargs.txt | args.interleave --switch
+--switch
+a
+--switch
+b
+--switch
+c
+"""
+
+import sys
+
+def main():
+    """Main program."""
+    main_arg = sys.argv[1]
+    sys.stdout.writelines(
+        interleaved_args(main_arg + "\n", sys.stdin)
+    )
+    return
+
+
+def interleaved_args(main_arg, arguments):
+    for arg in arguments:
+        yield main_arg
+        yield arg
+
+if __name__ == "__main__":
+    main()
+
+"""
+Copyright (c) 2014 Nicholas Martin Booker <NMBooker@gmail.com>
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+"""
