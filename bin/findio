@@ -1,42 +1,20 @@
-#! /usr/bin/env python
+#! /bin/bash
 
-"""Find in paths on stdin.
+# Find in paths on stdin.
 
-e.g.
+#e.g.
+#
+#    $ cat list_of_directories.txt | findio -type f -name "foo"
 
-    $ cat list_of_directories.txt | findio -type f -name "foo"
+# = What This Solves =
+#
+# The standard Unix utility find(1) takes a list of paths to search in
+# as its first non-command
+# arguments, not as its last, so you can't use xargs(1) to invoke it
+# across a list of directories from, say, a file.
+#
+# This fills that gap, by running find with the items on stdin as its
+# first arguments, then appending the arguments you supply on the
+# command line.
 
-= What This Solves =
-
-The standard Unix utility find(1) takes a list of paths to search in
-as its first non-command
-arguments, not as its last, so you can't use xargs(1) to invoke it
-across a list of directories from, say, a file.
-
-This fills that gap, by running find with the items on stdin as its
-first arguments, then appending the arguments you supply on the
-command line.
-
-= Possible Limitations =
-
-This might violate your platform's maximum argument list
-length for a large input.
-I believe handling this is best done by creating a new version of
-xargs(1), called say xargspre(1), which prepends the arguments on stdin
-to the argument list instead of appending them.
-GNU xargs can split it up into multiple runs of the same binary, etc,
-we should make use of that fact.
-"""
-
-import sys
-import subprocess
-
-def main():
-    """Main program."""
-    paths = [line.rstrip() for line in sys.stdin]
-    find = ['find'] + paths + sys.argv[1:]
-    subprocess.check_call(find)
-    return
-
-if __name__ == "__main__":
-    main()
+xargs -I{} find "{}" "$@"
