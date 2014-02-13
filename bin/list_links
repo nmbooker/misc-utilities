@@ -39,7 +39,9 @@ import csv
 def main(options):
     """Main program."""
     files = os.listdir(options.directory)
-    links = filter(os.path.islink, files)
+    links = list(filter(os.path.islink, files))
+    if len(links) == 0:
+        return
     maxpathlen = max(len(path) for path in links)
     details = []
     fmt = "%%s %%s %%-%ds -> %%s\n" % maxpathlen
