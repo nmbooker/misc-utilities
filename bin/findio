@@ -6,15 +6,11 @@
 #
 #    $ cat list_of_directories.txt | findio -type f -name "foo"
 
-# = What This Solves =
-#
-# The standard Unix utility find(1) takes a list of paths to search in
-# as its first non-command
-# arguments, not as its last, so you can't use xargs(1) to invoke it
-# across a list of directories from, say, a file.
-#
-# This fills that gap, by running find with the items on stdin as its
-# first arguments, then appending the arguments you supply on the
-# command line.
-
 xargs -I{} find "{}" "$@"
+
+
+# This wraps xargs(1) and find(1), because the xargs invocation for prepending
+# arguments is fiddly.
+
+# Note that, according to xargs(1) manual, the -I switch causes find to be
+# called once for every item on stdin.
