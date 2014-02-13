@@ -1,0 +1,24 @@
+#! /usr/bin/env python
+
+"""Split up an environment variable such as PATH
+"""
+
+import sys
+import argparse
+
+def main(options):
+    """Main program."""
+    sys.stdout.writelines(('%s\n' % item) for item in options.instr.split(':'))
+    return
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+               description="split up a value such as $PATH into lines",
+             )
+    parser.add_argument('instr', help='input string, e.g. a:b:c')
+    options = parser.parse_args()
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
