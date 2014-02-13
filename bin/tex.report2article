@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for i in $@ ; do
+	echo Converting $i from report to article...
+	sed -ireport "s/\\subsection/\\subsubsection/" $i
+	sed -i "s/\\section/\\subsection/" $i
+	sed -i "s/\\chapter/\\section/" $i
+	sed -i "s/\{report\}/\{article\}/" $i
+done
+

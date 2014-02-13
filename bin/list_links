@@ -1,0 +1,86 @@
+#! /usr/bin/env python
+
+"""list links in the current working directory
+
+Output format is as follows (for each link found):
+
+X Y NAME      -> TARGET
+
+Where:
+    NAME    is the name of the link found
+    TARGET  is the target of the link (relative to the link itself)
+    X       is the type of file:
+             f      Real file
+             d      Directory
+             o      Other (special) type of file
+             !      means the link is broken
+    Y       is whether the link is (r)elative or (a)bsolute
+
+The NAME column is left-aligned and will take the width of the longest
+filename in the list (so the -> TARGET will all line up) and it can be read
+as a table by a human being.
+
+If the target is a symlink, then that will in turn be resolved until it gets
+to a real file.
+I wanted to make it only resolve to the next link level but os.readlink() doesn't allow for that.
+
+For parseable output, use --parsable or -p
+
+Then the output will be as follows with no padding:
+
+X|Y|NAME|TARGET
+"""
+
+import sys
+import argparse
+import os
+import csv
+
+def main(options):
+    """Main program."""
+    files = os.listdir(options.directory)
+    links = filter(os.path.islink, files)
+    maxpathlen = max(len(path) for path in links)
+    details = []
+    fmt = "%%s %%s %%-%ds -> %%s\n" % maxpathlen
+    for path in links:
+        target = os.readlink(path)
+        ttype = get_type_of(target)
+        abschar = 'a' if os.path.isabs(target) else 'r'
+        details.append( (ttype, abschar, path, target) )
+    if options.parsable:
+        csv.writer(sys.stdout, delimiter="|").writerows(details)
+    else:
+        for line in details:
+            sys.stdout.write(fmt % line)
+    return
+
+def get_type_of(path):
+    """Get type of target (f, d, l, o) where o means 'other' (a device or socket for example)
+    """
+    if not os.path.exists(path):
+        return '!'
+    elif os.path.isfile(path):
+        return 'f'
+    elif os.path.isdir(path):
+        return 'd'
+    elif os.path.islink(path):
+        return 'l'
+    else:
+        return 'o'
+
+def get_options():
+   """Get options for the script."""
+   parser = argparse.ArgumentParser(
+              description="list links in the current working directory",
+            )
+   # parser.add_argument() calls here
+   #parser.add_argument('directory', nargs="?", default=".", help="directory to list links in (default: .)")
+   parser.add_argument('--parsable', '-p', action="store_true", default=False, help="output pipe-separated fields rather than aligned columns.  Note: if a filename contains a | then the field will be quoted according to CSV rules")
+   options = parser.parse_args()
+   options.directory = '.'
+   # extra processing of options here
+   return options
+
+if __name__ == "__main__":
+    main(get_options())

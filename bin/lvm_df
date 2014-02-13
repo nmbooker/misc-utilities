@@ -1,0 +1,11 @@
+#! /bin/bash
+
+# display a summary of LVM volume groups and their usage
+
+sudo=""
+
+if [ "$(id -u)" -ne 0 ] ; then
+    sudo="sudo"
+fi
+
+$sudo vgdisplay --short

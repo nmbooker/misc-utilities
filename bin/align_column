@@ -1,0 +1,145 @@
+#! /usr/bin/env perl
+
+# Align second word on all lines with end of longest first word
+
+use warnings;
+use strict;
+use diagnostics;
+use IO::Handle;
+use List::Util qw/max/;
+
+my $options = get_options();
+
+my $infile = IO::Handle->new();
+$infile = $infile->fdopen(fileno(STDIN), "r") or die "cannot open IO::Handle on STDIN: $!";
+my $outfile = IO::Handle->new();
+$outfile = $outfile->fdopen(fileno(STDOUT), "w") or die "cannot open IO::Handle on STDOUT: $!";
+
+my @records = ();
+
+while (my $line = $infile->getline()) {
+    my $record;
+    if ($line =~ /^#/) {
+        # comment
+        $record = { type => 'comment', content => $line }
+    }
+    else {
+        my ($left, $right);
+        if ($line =~ /^\s/) {
+            # continuation
+            ($left, $right) = ('', $line);
+        }
+        else {
+            # new record
+            ($left, $right) = split(/\s+/, $line, 2);
+            $left =~ s/\s+$//;
+        }
+        $record = { type => 'record', left => $left, right => $right};
+    }
+    push(@records, $record);
+}
+
+my $max_left_length = max(map { length($_->{left}) } grep { $_->{type} eq "record" } @records);
+
+
+
+my $record_format_string = sprintf("%%-%ds  %%s", $max_left_length);
+
+foreach my $rec (@records) {
+    if ($rec->{type} eq 'record') {
+        $outfile->printf($record_format_string, $rec->{left}, $rec->{right});
+    } else {
+        $outfile->print($rec->{content});
+    }
+}
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        # add further options here with their default values
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        # specify further options here with references to their values in the $options hashref
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+align_column - align second word with longest first word
+
+=head1 SYNOPSIS
+
+align_column [options]
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+
+B<align_column> will simply align the file into two columns, except for
+lines beginning with a #, for easy reading by a human.
+Each line will have two spaces separating key and value so it's easy for
+humans to see the gap.
+
+Comment lines are passed through as they are.
+
+Input is on STDIN, and output is on STDOUT.
+
+=head1 FILE FORMAT
+
+I have a very simple file format for looking up definitions of items
+without whitespace, for example Perl module names or most Unix program names.
+
+A comment line is simply anything with a # on the first column, and is
+left aligned as-is and ignored by any more complex processing tools I
+might write.  Such a comment might be a heading at the top describing
+what the file is documenting.
+
+Other lines are simply either a new record (where the first non-whitespace
+character is in the first column) or a continuation from the previous line
+(where the first column is whitespace).
+
+
+=cut
