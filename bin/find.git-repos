@@ -1,0 +1,30 @@
+#! /usr/bin/env python
+
+"""find git repositories
+"""
+
+import sys
+import argparse
+import subprocess   # to run find
+
+def main(options):
+    """Main program."""
+    find_cmd = ['find']
+    find_cmd.extend(options.locations)
+    find_cmd.extend(['-type', 'd', '-name', '*.git'])
+    subprocess.check_call(find_cmd)
+    return
+
+def get_options():
+   """Get options for the script."""
+   parser = argparse.ArgumentParser(
+              description="find git repositories",
+            )
+   # parser.add_argument() calls here
+   parser.add_argument('locations', nargs='*', help='list of locations to search.  Default: current directory', default=['.'])
+   options = parser.parse_args()
+   # extra processing of options here
+   return options
+
+if __name__ == "__main__":
+    main(get_options())
