@@ -1,0 +1,21 @@
+#! /bin/bash
+
+# Edit the contents of the X clipboard via a program that acts on files
+
+# Because of the way it all works, this is only really helpful for
+# the clipboard, not the primary selection.
+
+
+FILE="$(mktemp)"
+
+xclip -quiet -selection clipboard -out > "${FILE}"
+
+if [ -z "$1" ] ; then
+    editor "${FILE}"
+else
+    "$@" "${FILE}"
+fi
+
+cat "${FILE}" | xclip -quiet -selection clipboard -in
+
+rm "${FILE}"
