@@ -1,6 +1,12 @@
 #! /usr/bin/env python
 
-"""Tell us quickly the size of a named file."""
+"""Tell us quickly the size of a named file.
+
+This is much faster than wc --bytes, however can only be used on
+a seekable file (such as a file on disk, or a block device).
+
+STDIN is definitely off limits.
+"""
 
 import sys
 
