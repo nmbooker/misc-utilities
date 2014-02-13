@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# Find files in the PATH.
+
+splitpath "$PATH" | findio -maxdepth 1 "$@"

@@ -1,0 +1,7 @@
+#! /bin/bash
+
+# Look for executable programs in the PATH.
+
+# Like which but with wildcards, and returns all matches.
+
+path_find -name "$1"
