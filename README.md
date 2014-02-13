@@ -1,10 +1,13 @@
-general-utilities
-=================
+misc-utilities
+==============
 
-A selection of general utilities I've written over the last few years
+A selection of miscellaneous utilities I've written over the last few years
 
 Note that some programs depend on others, so the bin directory will need
 to be in your PATH at runtime.
+
+Also note I might shift some of these scripts into their own self-contained
+projects at some point, if I think they deserve it.
 
 # License
 
