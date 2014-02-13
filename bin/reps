@@ -1,5 +1,5 @@
 #! /bin/bash
 
-# Output number of times each line occurs in the file.
+# Output number of times each line occurs on stdin.
 
 sort | uniq -c
