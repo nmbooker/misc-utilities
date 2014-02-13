@@ -1,0 +1,64 @@
+#! /usr/bin/env python
+
+"""Make a new python script."""
+
+import sys
+import os
+import re
+import argparse
+
+def main(options):
+    """Main program."""
+    if os.path.exists(options.script_name):
+        error_format = "Error: the file %r already exists.\n"
+        sys.stderr.write(error_format % options.script_name)
+        sys.exit(2)
+
+    module_name_re = re.compile(r'^[a-zA-Z][a-zA-Z0-9_]*\.pyw?$')
+    if not module_name_re.match(os.path.basename(options.script_name)):
+        warning_format = "Warning: %r won't be importable as module.\n"
+        sys.stderr.write(warning_format % options.script_name)
+    
+    description = '<++>' if options.placeholders else 'DESCRIPTION'
+    main_logic = '<++>' if options.placeholders else '# MAIN_LOGIC'
+    with file(options.script_name, 'w') as script:
+        script.write("#! /usr/bin/env python\n")
+        script.write("\n")
+        script.write('"""%s\n' % description)
+        script.write('"""\n')
+        script.write('\n')
+        script.write('import sys\nimport argparse\n\n')
+        script.write('def main(options):\n')
+        script.write('    """Main program."""\n')
+        script.write('    %s\n' % main_logic)
+        script.write('    return\n')
+        script.write('\n')
+        script.write('def get_options():\n')
+        script.write('    """Get options for the script."""\n')
+        script.write('    parser = argparse.ArgumentParser(\n')
+        script.write('               description="%s",\n' % description)
+        script.write('             )\n')
+        script.write('    # parser.add_argument() calls here\n')
+        script.write('    options = parser.parse_args()\n')
+        script.write('    # extra processing of options here\n')
+        script.write('    return options\n')
+        script.write('\n')
+        script.write('if __name__ == "__main__":\n')
+        script.write('    main(get_options())\n')
+    os.chmod(options.script_name, 0755)
+    return
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+            description="generate a new python script"
+            )
+    parser.add_argument('script_name', help='name of script to create')
+    parser.add_argument('-p', '--placeholders', action='store_true',
+            default=False,
+            help='insert <++> placeholders instead of comments')
+    options = parser.parse_args()
+    return options
+
+if __name__ == "__main__":
+    main(get_options())

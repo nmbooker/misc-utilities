@@ -1,0 +1,59 @@
+#! /usr/bin/env python
+
+"""generate a new shell script
+"""
+
+import sys
+import argparse
+import os
+
+def main(options):
+    """Main program."""
+    if os.path.exists(options.script_name):
+        sys.stderr.write("Error: the file %r already exists.\n" % options.script_name)
+        sys.exit(2)
+
+    with file(options.script_name, 'w') as script:
+        script.write("#! /bin/bash\n")
+        script.write("\n")
+        script.write("# DESCRIPTION\n")
+        script.write("\n")
+        script.write("# SCRIPTDIR: Get the (relative) path to the script\n")
+        script.write("# SCRIPTDIR=\"$(dirname $0)\"\n")
+        script.write("\n")
+        script.write("# CODE\n")
+    if options.set_executable:
+        os.chmod(options.script_name, 0755)
+    return
+
+def get_options():
+    """Get options for the script.
+ 
+    
+    The option set_executable is a booleanised version of the real option
+    executable.  The default for '--executable' is usually 'y' (so set_executable will usually
+    be True).
+    A future extension of this script could be to enable production of a
+    shell 'library' that you source from another script, in which case
+    the default will be 'n' if that option is provided.  That isn't implemented
+    yet but I see it happening in the very near future.
+ 
+    Use options.set_executable rather than options.executable in your logic
+    unless you're displaying the user's choice back at them!
+    """
+    parser = argparse.ArgumentParser(
+               description="generate a new shell script",
+             )
+    parser.add_argument('script_name', help='name of script to create')
+    parser.add_argument('-X', '--executable', choices=['y', 'n'],
+            default=None, help="Whether to set the script executable (default=y).")
+ 
+    options = parser.parse_args()
+    # extra processing of options here
+    if options.executable is None:
+        options.executable = 'y'
+    options.set_executable = {'y': True, 'n': False}[options.executable]
+    return options
+
+if __name__ == "__main__":
+    main(get_options())

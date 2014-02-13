@@ -1,0 +1,203 @@
+#! /usr/bin/env perl
+
+# generate a new perl script with boilerplate for option parsing built in
+
+use warnings;
+use strict;
+use diagnostics;
+use IO::File;
+
+my $options = get_options();
+my $script_name = $options->{script_name};
+if ( -e $script_name ) {
+    print STDERR "Error: Doing nothing because the file '$script_name' already exists.\n";
+    exit 1;
+
+}
+my $script = <<"END_SCRIPT";
+#! /usr/bin/env perl
+
+# TODO: BRIEF_DESCRIPTION
+
+use warnings;
+use strict;
+use diagnostics;
+
+my \$options = get_options();
+# TODO: MAIN CODE HERE
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my \$prog = basename(\$0);  # can be used in error messages
+
+    my \$options = {
+        help => 0,
+        man => 0,
+        # add further options here with their default values
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my \$parsed_ok = GetOptions(
+        'h|help'    =>  \\\$options->{help},
+        'man'       =>  \\\$options->{man},
+        # specify further options here with references to their values in the \$options hashref
+    );
+
+    pod2usage(-exitval => 2) unless \$parsed_ok;
+
+    # Note -output defaults to \*STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if \$options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if \$options->{man};
+
+    # Process remaining arguments from \@ARGV here, adding results
+    # to \$options.
+
+    return \$options;
+}
+END_SCRIPT
+
+my $pod = <<"END_POD";
+
+=head1 NAME
+
+$script_name - BRIEF_DESCRIPTION
+
+=head1 SYNOPSIS
+
+$script_name [options]
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<$script_name> will ...
+
+=cut
+END_POD
+
+my $outfile = IO::File->new($script_name, '>');
+$outfile->print($script);
+$outfile->print("\n__END__\n");
+$outfile->print($pod);
+$outfile->close();
+chmod(0755, $script_name);
+print STDERR "Written $script_name\n";
+
+
+# Returns a hashref like follows:
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    Getopt::Long::Configure(qw{gnu_getopt});
+
+    my $prog = basename($0);
+
+    my $options = {
+        help => 0,
+        man => 0,
+        nodoc => 0,
+    };
+
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        'nodoc'     =>  \$options->{nodoc},
+    );
+
+    mypod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to \*STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    mypod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    mypod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    mypod2usage(-msg => "$prog: Error: script_name not given", -exitval => 2) if (@ARGV == 0);
+
+    $options->{script_name} = $ARGV[0];
+
+    return $options;
+}
+
+# This is because there's POD embedded in the output code as well as the
+# POD for this program itself, so we end up with both unless we use
+# the __DATA__ rather than __END__.
+# So use mypod2usage instead of pod2usage
+sub mypod2usage {
+    use Pod::Usage;
+    return pod2usage(@_, -input => \*DATA);
+}
+
+__DATA__
+
+=head1 NAME
+
+new.perl.script - Generate a new Perl script.
+
+=head1 SYNOPSIS
+
+new.perl.script [options] script_name
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<new.perl.script> will produce a basic Perl script, complete with
+bare-bones command line parsing and POD-based usage documentation, for you to fill in.
+
+The script generated uses GNU-style getopt by default, so will take one-character options
+beginning with a single dash (e.g. -h) and long options with a double-dash (e.g. --help).
+
+--help, --man and -h are configured to send the documentation to STDOUT because it's
+expected output.  It should go to STDERR (the default) in the case of errors.
+
+There are hints in the code, in form of comments, as to what you might want to put in
+various places.
+
+I recommend you put further non-option argument parsing at the end of get_options()
+and put the results in the $options hashref.
+
+For example, in this script, I used roughly:
+ 
+    mypod2usage(-msg => "$prog: Error: script_name not given", -exitval => 2) if (@ARGV == 0);
+    $options->{script_name} = $ARGV[0];
+
+just before the C<return $options;> line.
+=cut
