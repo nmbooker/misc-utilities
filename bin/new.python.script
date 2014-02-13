@@ -36,8 +36,8 @@ def main(options):
         script.write('def get_options():\n')
         script.write('    """Get options for the script."""\n')
         script.write('    parser = argparse.ArgumentParser(\n')
-        script.write('               description="%s",\n' % description)
-        script.write('             )\n')
+        script.write('        description="%s",\n' % description)
+        script.write('    )\n')
         script.write('    # parser.add_argument() calls here\n')
         script.write('    options = parser.parse_args()\n')
         script.write('    # extra processing of options here\n')
@@ -51,12 +51,12 @@ def main(options):
 def get_options():
     """Get options for the script."""
     parser = argparse.ArgumentParser(
-            description="generate a new python script"
-            )
+        description="generate a new python script"
+    )
     parser.add_argument('script_name', help='name of script to create')
     parser.add_argument('-p', '--placeholders', action='store_true',
-            default=False,
-            help='insert <++> placeholders instead of comments')
+        default=False, help='insert <++> placeholders instead of comments'
+    )
     options = parser.parse_args()
     return options
 
