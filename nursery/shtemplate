@@ -2,6 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """Render a Jinja2 template with JSON data as input.
+
+JSON was chosen because many web services speak JSON,
+and there's a neat tool 'jq' http://stedolan.github.io/jq/
+for processing and querying JSON data at the command line,
+so you can use that to massage and aggregate data before you pass
+jinja for rendering.
 """
 
 import sys
