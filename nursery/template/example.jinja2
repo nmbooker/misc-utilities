@@ -1,0 +1,8 @@
+{% for user in users %}
+Name:  {{ user.name }}
+Uid:   {{ user.uid }}
+Gid:   {{ user.gid }}
+Home:  {{ user.home }}
+Shell: {{ user.shell }}
+------------------------------------------
+{% endfor %}

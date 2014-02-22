@@ -1,0 +1,19 @@
+{
+    "users": [
+        {
+            "name": "fred",
+            "uid": 1000,
+            "gid": 1000,
+            "home": "/home/fred",
+            "shell": "/bin/bash"
+        }
+        ,
+        {
+            "name": "wilma",
+            "uid": 1001,
+            "gid": 1001,
+            "home": "/home/wilma",
+            "shell": "/bin/csh"
+        }
+    ]
+}

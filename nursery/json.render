@@ -1,0 +1,45 @@
+#! /usr/bin/env python
+
+"""Render a Jinja2 template with JSON data as input.
+"""
+
+import sys
+import argparse
+from jinja2 import Environment, FileSystemLoader
+import json
+
+def main(options):
+    """Main program."""
+    sys.stdout.write(render(options))
+    return
+
+def render(options):
+    """Does most of the job.
+    """
+    template = get_template(options)
+    data = get_data(options)
+    return template.render(**data)
+
+def get_data(options):
+    """Get the data given the options.
+    """
+    return json.load(sys.stdin)
+
+def get_template(options):
+    """Get the template given the user options.
+    """
+    env = Environment(loader=FileSystemLoader(options.templates_dir))
+    return env.get_template(options.template_name)
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="render a Jinja2 template with JSON data as input",
+    )
+    parser.add_argument('templates_dir', default='.', help='directory containing jinja2 templates. Default: %(default)s')
+    parser.add_argument('template_name', help='relative path to template to render')
+    options = parser.parse_args()
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
