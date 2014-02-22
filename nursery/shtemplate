@@ -3,11 +3,38 @@
 
 """Render a Jinja2 template with JSON data as input.
 
+The only requirement on the data you pass in is it must be a single
+JSON object (dictionary) structure, like so:
+
+    {
+        "users": [
+            {
+                "name": "fred",
+                "uid": 1000,
+                "gid": 1000,
+                "home": "/home/fred",
+                "shell": "/bin/bash"
+            }
+            ...
+        ]
+    }
+
+
 JSON was chosen because many web services speak JSON,
 and there's a neat tool 'jq' http://stedolan.github.io/jq/
 for processing and querying JSON data at the command line,
-so you can use that to massage and aggregate data before you pass
-jinja for rendering.
+so you can use that to massage, convert and aggregate data
+before you pass jinja for rendering.
+
+If in the above example your input file just contained the "users"
+array, minus the surrounding structure, you could use 'jq' to format
+it thus:
+
+    cat users.json | jq '{users: .}' | shtemplate users.txt.jinja2
+
+Note that 'jq' pretty-prints.  If you're working on a really big data
+structure you might make a saving by supplying the argument
+'--compact-output' or '-c' to jq.
 """
 
 import sys
