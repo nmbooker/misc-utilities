@@ -17,7 +17,9 @@ import json
 
 def main(options):
     """Main program."""
-    json.dump(yaml.load(sys.stdin, Loader=Loader), sys.stdout)
+    for document in yaml.load_all(sys.stdin, Loader=Loader):
+        json.dump(document, sys.stdout)
+        sys.stdout.write('\n')
     return
 
 def get_options():
