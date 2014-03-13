@@ -11,6 +11,7 @@ Where:
     TARGET  is the target of the link (relative to the link itself)
     X       is the type of file:
              f      Real file
+             F      Real executable file
              d      Directory
              o      Other (special) type of file
              !      means the link is broken
@@ -63,7 +64,7 @@ def get_type_of(path):
     if not os.path.exists(path):
         return '!'
     elif os.path.isfile(path):
-        return 'f'
+        return 'F' if os.access(path, os.X_OK) else 'f'
     elif os.path.isdir(path):
         return 'd'
     elif os.path.islink(path):
