@@ -10,6 +10,7 @@ def main(options):
     """Main program."""
     total = 0.0
     lineno = 0
+    outfmt = options.outfmt + "\n"
     for line in sys.stdin:
         lineno += 1
         line = line.strip()
@@ -19,15 +20,16 @@ def main(options):
             sys.stderr.write("Line %d is not a valid number: %s\n" % (lineno, line))
             continue
         total += number
-    sys.stdout.write("%0.2f\n" % total)
+    sys.stdout.write(outfmt % total)
     return
 
 def get_options():
     """Get options for the script."""
     parser = argparse.ArgumentParser(
-               description="prints on stdout the sum of the numbers (floats) on stdin",
-             )
+        description="prints on stdout the sum of the numbers (treated as floats) on stdin",
+    )
     # parser.add_argument() calls here
+    parser.add_argument('--outfmt', '-F', help='format string for output', default="%0.2f")
     options = parser.parse_args()
     # extra processing of options here
     return options
