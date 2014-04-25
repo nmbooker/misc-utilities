@@ -1,0 +1,32 @@
+#! /usr/bin/env python
+
+"""Convert a series of times in format HH:MM to number of minutes.
+"""
+
+import sys
+import argparse
+from itertools import imap
+
+def main(options):
+    """Main program."""
+    durations_in_base_10 = imap(to_base_10, (l.rstrip() for l in sys.stdin))
+    for d in durations_in_base_10:
+        sys.stdout.write('%d\n' % d)
+    return
+
+def to_base_10(durstr):
+    hh,mm = map(int, durstr.split(':'))
+    return (60 * hh) + mm
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="convert each line HH:MM to number of minutes",
+    )
+    # parser.add_argument() calls here
+    options = parser.parse_args()
+    # extra processing of options here
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
