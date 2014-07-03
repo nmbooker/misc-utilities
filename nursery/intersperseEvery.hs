@@ -19,15 +19,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 -}
 
 {-
-Why Haskell?
+This is a generalised version of the original quick-and-dirty program
+I wrote specifically to put the colons into a MAC address every two
+characters.
 
-Because when I decided I needed to intersperse colons every two characters
-in a MAC address of form AABBCCDDEEFF to get AA:BB:CC:DD:EE:FF a Haskell
-implementation is what sprang to mind first.
-
-This is a generalised version of the original quick-and-dirty program.
 You can now intersperse any string
-of characters, and number of characters apart.
+of characters, and number of characters apart, not just colons every 2.
 
 To deal with the MAC address, here's a sample interaction:
 >    $ echo AABBCCDDEEFF | intersperseEvery 2 :
@@ -38,9 +35,16 @@ To deal with the MAC address, here's a sample interaction:
 import System.IO (hPutStrLn, stderr)
 import System.Environment (getProgName, getArgs)
 import System.Exit (exitFailure, exitSuccess)
-import Control.Monad (join)
-import Data.List (intersperse)
+import Data.List (intercalate, concat)
 import Data.List.Split (chunksOf)
+
+{-
+intersperseEvery does the deed.  Everything else in this program
+is for argument parsing, I/O and user error handling.
+-}
+intersperseEvery :: Int -> [a] -> [a] -> [a]
+intersperseEvery n sep = (intercalate sep) . (chunksOf n)
+
 
 main = do
     args <- argParseIO
@@ -49,8 +53,6 @@ main = do
         Right (num, sep) ->
                 interactLines $ map $ intersperseEvery num sep
 
-intersperseEvery :: Int -> [a] -> [a] -> [a]
-intersperseEvery n sep = join . (intersperse sep) . (chunksOf n)
 
 {-
 Useful abstraction over standard library 'interact' function.
@@ -75,13 +77,12 @@ argParse [numStr, separator]
             else Left "ERROR: num must be 1 or higher"
 argParse _ = Left "ERROR: Incorrect number or type of arguments"
 
+usagePat = "num separator"
 
 failWithUsage :: String -> IO ()
 failWithUsage errorStr = do
             name <- getProgName
             hPutStrLn stderr $ name ++ ": " ++ errorStr
-            hPutStrLn stderr $ usage name
+            hPutStrLn stderr $ "Usage: " ++ name ++ " " ++ usagePat
             exitFailure
 
-usage :: String -> String
-usage progName = "Usage: " ++ progName ++ " num separator"
