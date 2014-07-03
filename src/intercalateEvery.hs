@@ -27,7 +27,7 @@ You can now intersperse any string
 of characters, and number of characters apart, not just colons every 2.
 
 To deal with the MAC address, here's a sample interaction:
->    $ echo AABBCCDDEEFF | intersperseEvery 2 :
+>    $ echo AABBCCDDEEFF | intercalateEvery 2 :
 >    AA:BB:CC:DD:EE:FF
 -}
 
