@@ -39,11 +39,11 @@ import Data.List (intercalate, concat)
 import Data.List.Split (chunksOf)
 
 {-
-intersperseEvery does the deed.  Everything else in this program
+intercalateEvery does the deed.  Everything else in this program
 is for argument parsing, I/O and user error handling.
 -}
-intersperseEvery :: Int -> [a] -> [a] -> [a]
-intersperseEvery n sep = (intercalate sep) . (chunksOf n)
+intercalateEvery :: Int -> [a] -> [a] -> [a]
+intercalateEvery n sep = (intercalate sep) . (chunksOf n)
 
 
 main = do
@@ -51,7 +51,7 @@ main = do
     case args of
         Left error -> failWithUsage error
         Right (num, sep) ->
-                interactLines $ map $ intersperseEvery num sep
+                interactLines $ map $ intercalateEvery num sep
 
 
 {-
