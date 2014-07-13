@@ -49,3 +49,6 @@ def get_options():
 
 if __name__ == "__main__":
     main(get_options())
+
+
+# vim: filetype=python
