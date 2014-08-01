@@ -21,21 +21,13 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # SCRIPTDIR: Get the (relative) path to the script
-# SCRIPTDIR="$(dirname $0)"
+SCRIPTDIR="$(dirname $0)"
+FIRSTNZ="$SCRIPTDIR/firstNZArg"
 
 set -e
 
 TMPF="$(tempfile)"
-EDIT="$(if [ -z "$1" ] ; then
-    if [ -z "$VISUAL" ] ; then
-        echo $EDITOR
-    else
-        echo $VISUAL
-    fi
-else
-    echo $1
-fi
-)"
+EDIT="$("$FIRSTNZ" "$1" "$VISUAL" "$EDITOR" "editor")"
 
 cat > "$TMPF"
 
