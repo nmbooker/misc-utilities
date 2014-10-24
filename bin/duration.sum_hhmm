@@ -1,0 +1,9 @@
+#! /bin/bash
+
+# Sum a series of durations HH:MM and get HH:MM out the other end.
+
+# SCRIPTDIR: Get the (relative) path to the script
+# SCRIPTDIR="$(dirname $0)"
+
+duration.tobase10 | numbers.sum -F '%d' | duration.divmod
+
