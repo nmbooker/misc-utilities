@@ -1,0 +1,44 @@
+#! /usr/bin/env python
+
+"""Surround each line of text with two strings.
+"""
+
+import sys
+import argparse
+from itertools import imap
+import re
+
+INDENT_RE = re.compile('^(\s*)(.*)$')
+
+def main(options):
+    """Main program."""
+    lines = (l.rstrip() for l in sys.stdin.readlines())
+    out_lines = imap(surround(options), lines)
+    sys.stdout.writelines(out_lines)
+    return
+
+def surround(options):
+    def _surround(line):
+        indent, rest = indentation(line) if options.preserve_indent else ('', line)
+        return indent + options.beginning + rest + options.end + '\n'
+    return _surround
+
+def indentation(line):
+    parsed = INDENT_RE.match(line)
+    indent = parsed.group(1)
+    rest = parsed.group(2)
+    return (indent, rest)
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="surround each line of text with two strings",
+    )
+    parser.add_argument('beginning', help='what to put at the beginning of each line')
+    parser.add_argument('end', help='what to put at the beginning of each line')
+    parser.add_argument('--preserve-indent', '-i', action='store_true', help='preserve indentation on each line')
+    options = parser.parse_args()
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
