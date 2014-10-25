@@ -1,0 +1,9 @@
+#! /bin/bash
+
+# Dump to STDOUT list of packages that are marked as manually installed
+
+# SCRIPTDIR: Get the (relative) path to the script
+# SCRIPTDIR="$(dirname $0)"
+
+
+aptitude search -F '%p' --disable-columns -q '~i!~M'
