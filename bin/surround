@@ -35,7 +35,7 @@ def get_options():
         description="surround each line of text with two strings",
     )
     parser.add_argument('beginning', help='what to put at the beginning of each line')
-    parser.add_argument('end', help='what to put at the beginning of each line')
+    parser.add_argument('end', help='what to put at the end of each line')
     parser.add_argument('--preserve-indent', '-i', action='store_true', help='preserve indentation on each line')
     options = parser.parse_args()
     return options
