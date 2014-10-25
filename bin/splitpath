@@ -8,7 +8,7 @@ import argparse
 
 def main(options):
     """Main program."""
-    sys.stdout.writelines(('%s\n' % item) for item in options.instr.split(':'))
+    sys.stdout.writelines(item + '\n' for item in options.instr.split(':'))
     return
 
 def get_options():
