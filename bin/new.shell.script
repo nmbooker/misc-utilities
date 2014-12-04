@@ -19,7 +19,7 @@ def main(options):
         script.write("# DESCRIPTION\n")
         script.write("\n")
         script.write("# SCRIPTDIR: Get the (relative) path to the script\n")
-        script.write("# SCRIPTDIR=\"$(dirname $0)\"\n")
+        script.write("# SCRIPTDIR=\"$(dirname \"$0\")\"\n")
         script.write("\n")
         script.write("# CODE\n")
     if options.set_executable:
