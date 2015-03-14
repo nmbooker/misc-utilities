@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 """Make a new python script."""
 
@@ -22,7 +22,7 @@ def main(options):
     description = '<++>' if options.placeholders else 'DESCRIPTION'
     main_logic = '<++>' if options.placeholders else '# MAIN_LOGIC'
     with file(options.script_name, 'w') as script:
-        script.write("#! /usr/bin/env python\n")
+        script.write("#! /usr/bin/env python2\n")
         script.write("\n")
         script.write('"""%s\n' % description)
         script.write('"""\n')
