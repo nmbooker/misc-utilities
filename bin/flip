@@ -1,0 +1,15 @@
+#! /bin/bash
+
+# DESCRIPTION
+
+# SCRIPTDIR: Get the (relative) path to the script
+# SCRIPTDIR="$(dirname "$0")"
+
+cmd="$1"
+shift
+arg1="$1"
+shift
+arg2="$1"
+shift
+
+exec "$cmd" "$arg2" "$arg1" "$@"
