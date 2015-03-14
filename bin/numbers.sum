@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 """print on stdout the sum of numbers given on stdin
 """

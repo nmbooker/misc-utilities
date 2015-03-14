@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python2
 
 """Takes a JSON array on stdin, and prints its length on stdout
 """
