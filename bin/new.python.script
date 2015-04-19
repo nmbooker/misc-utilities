@@ -22,7 +22,7 @@ def main(options):
     description = '<++>' if options.placeholders else 'DESCRIPTION'
     main_logic = '<++>' if options.placeholders else '# MAIN_LOGIC'
     with open(options.script_name, 'w') as script:
-        script.write("#! /usr/bin/env python2\n")
+        script.write("#! /usr/bin/env %s\n" % (options.python,))
         script.write("\n")
         script.write('"""%s\n' % description)
         script.write('"""\n')
@@ -57,7 +57,11 @@ def get_options():
     parser.add_argument('-p', '--placeholders', action='store_true',
         default=False, help='insert <++> placeholders instead of comments'
     )
+    parser.add_argument('--py3', action='store_true',
+        help="generate python3 script",
+    )
     options = parser.parse_args()
+    options.python = 'python' + ('3' if options.py3 else '2')
     return options
 
 if __name__ == "__main__":
