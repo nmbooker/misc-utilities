@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+
+# Generate a times table
+
+my $table = $ARGV[0];
+foreach my $x (1..($ARGV[1] // 12)) {
+    printf("%3d x %3d = %4d\n" => ($x, $table, $x * $table));
+}
