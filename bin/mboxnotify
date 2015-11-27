@@ -1,0 +1,59 @@
+#!/usr/bin/env perl
+
+# sudo apt-get install libnotify-bin liblinux-inotify2-perl libmail-box-perl libset-scalar-perl
+# mboxnotify
+
+use v5.10;
+use warnings;
+use strict;
+use autodie qw/system open close/;
+use Linux::Inotify2;
+use Mail::Box::Mbox;
+use Set::Scalar;
+
+my $mailbox = $ENV{MAIL} // ("/var/mail/".$ENV{USER});
+
+my $inotify = Linux::Inotify2->new
+    or die "unable to create new inotify object: $!";
+
+$inotify->blocking(1);
+
+my $seen = Set::Scalar->new();
+
+sub handle_write {
+    my $e = shift;
+    my $mbox = Mail::Box::Mbox->new(
+	folder => $mailbox,
+	lock_type => 'none',
+    );
+    my @messages = $mbox->messages('ACTIVE');
+    my @new;
+    foreach my $msg (@messages) {
+	my $msgtext;
+	open(my $outf, '>', \$msgtext);
+	$msg->print($outf);
+	close($outf);
+
+	unless ($seen->has($msgtext)) {
+	    push @new, $msg;
+	    $seen->insert($msgtext);
+	}
+    }
+    $mbox->close;
+
+    return unless @new;
+    
+    my $summary = sprintf('%d new messages in %s', scalar @new, $mailbox);
+    my $body = join("\n", map {
+	my @from = $_->from;
+	sprintf('%s (from %s)', $_->subject, $from[0]->address);
+    } @new);
+    system qw/notify-send -t 2000 -u normal/, $summary, $body;
+}
+
+
+handle_write();   # Look for new messages at startup
+
+$inotify->watch($mailbox, IN_CLOSE_WRITE, \&handle_write);
+
+1 while $inotify->poll;
