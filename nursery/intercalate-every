@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+
+# sudo apt-get install libscalar-list-utils-perl
+
+use v5.10;
+use warnings;
+use strict;
+use List::Util qw/min/;
+
+unless (@ARGV == 2) {
+    say STDERR "$0: error: Not enough arguments";
+    say STDERR "Usage: $0 num sep";
+    exit 2;
+}
+my $num = shift;
+my $char = shift;
+
+sub split_every {
+    my ($str, $num) = @_;
+
+    my @parts;
+    while ($str) {
+	push @parts, substr($str, 0, $num);
+	$str = substr($str, min($num, length($str)));
+    }
+    @parts
+}
+
+while (my $line = <STDIN>) {
+    chomp $line;
+    say join($char, split_every($line, $num));
+}
