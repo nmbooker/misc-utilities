@@ -9,11 +9,12 @@ use List::Util qw/min/;
 
 unless (@ARGV == 2) {
     say STDERR "$0: error: Not enough arguments";
-    say STDERR "Usage: $0 num sep";
+    say STDERR "Usage: $0 num sep <<< string";
     exit 2;
 }
-my $num = shift;
-my $char = shift;
+
+
+my ($num, $char) = @ARGV;
 
 sub split_every {
     my ($str, $num) = @_;
