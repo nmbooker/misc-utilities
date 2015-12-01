@@ -1,0 +1,33 @@
+#! /usr/bin/env python
+
+"""Fill the given column with given string
+"""
+
+import sys
+import argparse
+from csvkit.unicsv import UnicodeCSVDictReader, UnicodeCSVDictWriter
+
+def main(options):
+    """Main program."""
+    reader = UnicodeCSVDictReader(sys.stdin)
+    writer = UnicodeCSVDictWriter(sys.stdout, fieldnames=reader.fieldnames)
+    writer.writeheader()
+    for row in reader:
+        row[options.column] = options.string
+        writer.writerow(row)
+    return
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="Fill the given column with the given string in a CSV file",
+    )
+    # parser.add_argument() calls here
+    parser.add_argument('column', help='Name the column you want to fill down')
+    parser.add_argument('string', help="The string to fill the column with")
+    options = parser.parse_args()
+    # extra processing of options here
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
