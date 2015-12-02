@@ -1,0 +1,25 @@
+#!/usr/bin/perl
+
+# Format an ICAL file as a series of Emacs Org-mode SCHEDULED entries.
+# sudo apt-get install libdata-ical-perl
+
+use strict;
+use warnings;
+use Data::ICal::DateTime;
+
+my $ical = Data::ICal->new();
+
+my $data = do {
+    local $/;
+    <STDIN>
+};
+
+$ical->parse(data => $data);
+
+my @events = $ical->events;
+
+foreach my $event (@events) {
+    my ($start, $end) = map { $event->$_->strftime('%Y-%m-%d %H:%M') } qw/start end/;
+    my $summary = $event->summary;
+    printf(qq/** %s\n   SCHEDULED: <%s -- %s>\n/, grep { defined } $summary, $start, $end);
+}
