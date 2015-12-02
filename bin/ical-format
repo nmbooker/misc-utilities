@@ -6,6 +6,7 @@
 use strict;
 use warnings;
 use Data::ICal::DateTime;
+use subs qw/same_day fmt_range fmt_event/;
 
 my $ical = Data::ICal->new();
 
@@ -18,8 +19,26 @@ $ical->parse(data => $data);
 
 my @events = $ical->events;
 
-foreach my $event (@events) {
-    my ($start, $end) = map { $event->$_->strftime('%Y-%m-%d %H:%M') } qw/start end/;
-    my $summary = $event->summary;
-    printf(qq/** %s\n   SCHEDULED: <%s -- %s>\n/, grep { defined } $summary, $start, $end);
+fmt_event($_) foreach @events;
+
+sub fmt_event {
+    my $event = shift;
+    printf(qq/** %s\n   SCHEDULED: <%s>\n/, $event->summary, fmt_range($event->start, $event->end));
+}
+
+sub fmt_range {
+    my ($start, $end) = @_;
+    my $date_fmt = '%Y-%m-%d %a';
+    if (same_day $start, $end) {
+        my $day = $start->strftime($date_fmt);
+        my ($start_time, $end_time) = map { $_->strftime('%H:%M') } ($start, $end);
+        return sprintf('%s %s-%s', $day, $start_time, $end_time);
+    }
+    return sprintf('%s -- %s', map {$_->strftime($date_fmt . ' %H:%M')} ($start, $end));
+}
+
+
+sub same_day {
+    my ($dt1, $dt2) = @_;
+    $dt1->truncate(to => 'day') == $dt2->truncate(to => 'day')
 }
