@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# sudo apt-get install dar par2
+
+set -e
+
+DEV="$1"
+TARGET="$2"
+
+echo "$DEV     --->    $TARGET" >&2
+
+MOUNTPOINT="${MOUNTPOINT:-/mnt/lv}"
+mkdir -p "${MOUNTPOINT}"
+
+if mountpoint "${MOUNTPOINT}" ; then
+    echo "Something already mounted on ${MOUNTPOINT}" >&2
+    exit 3
+fi
+
+function do-unmount() {
+    umount "$MOUNTPOINT"
+}
+
+mount -oro "$DEV" "$MOUNTPOINT"
+trap do-unmount EXIT
+
+mkdir -p "$(dirname "$TARGET")"
+
+set -x
+dar -c "$TARGET" -s 1G -z -R "$MOUNTPOINT" -3 sha1
+DARRET=$?
+set +x
+trap - EXIT
+do-unmount
+
+
+echo "END: dar exited with $DARRET"
+
+exit $DARRET
