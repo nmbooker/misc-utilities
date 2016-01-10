@@ -28,15 +28,15 @@ sub handle_write {
     my @messages = $mbox->messages('ACTIVE');
     my @new;
     foreach my $msg (@messages) {
-	my $msgtext;
-	open(my $outf, '>', \$msgtext);
-	$msg->print($outf);
-	close($outf);
+        my $msgtext;
+        open(my $outf, '>', \$msgtext);
+        $msg->print($outf);
+        close($outf);
 
-	unless ($seen->has($msgtext)) {
-	    push @new, $msg;
-	    $seen->insert($msgtext);
-	}
+        unless ($seen->has($msgtext)) {
+            push @new, $msg;
+            $seen->insert($msgtext);
+        }
     }
     $mbox->close;
 
@@ -44,8 +44,8 @@ sub handle_write {
     
     my $summary = sprintf('%d new messages in %s', scalar @new, $mailbox);
     my $body = join("\n", map {
-	my @from = $_->from;
-	sprintf('%s (from %s)', $_->subject, $from[0]->address);
+        my @from = $_->from;
+        sprintf('%s (from %s)', $_->subject, $from[0]->address);
     } @new);
     system qw/notify-send -t 2000 -u normal/, $summary, $body;
 }
