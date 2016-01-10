@@ -1,0 +1,144 @@
+#! /usr/bin/env perl
+
+# Back up OS on btrfs filesystem
+#
+# apt-get install dar par2 liblockfile-simple-perl libdatetime-perl libtry-tiny-perl
+
+use v5.20;
+use warnings;
+use strict;
+use feature 'signatures';
+no warnings 'experimental::signatures';
+use autodie;
+
+use DateTime;
+use File::Spec::Functions qw/catfile/;
+use Try::Tiny;
+use LockFile::Simple qw/trylock unlock/;
+
+use subs qw/with_snapshot with_lock/;
+
+my $options = get_options();
+
+my $lockfile = "/var/run/os-backup-btrfs";
+with_lock $lockfile => sub {
+    my $time = DateTime->now();
+    with_snapshot '/', '/_snap_os_backup' => sub($root, $snapshot) {
+        my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
+        my $hostname = `/bin/hostname`;
+        my $backup_basedir = '/data/os-backup';
+        my $target = catfile(
+            $backup_basedir,
+            $hostname,
+            $hostname.'_os-backup_'.$stamp
+        );
+        my @cmd = (
+            qw[ dar -c ],
+            $target,
+            -s => '1G',
+            '-z',
+            -R => $snapshot,
+            -P => catfile($snapshot, $backup_basedir),
+            -P => '/data',
+            '-3' => 'sha1',
+        );
+        say STDERR "@cmd";
+        system @cmd;
+    };
+};
+
+sub with_snapshot($orig, $snapshot, $code) {
+    system qw( btrfs subvolume snapshot -r ), $orig, $snapshot;
+    my $cleanup = sub {
+        try { system qw( btrfs subvolume delete ), $snapshot }
+        catch {
+            warn "$0: Removal of snapshot $snapshot failed: $_";
+        };
+    };
+    try {
+        $code->($orig, $snapshot);
+    } catch {
+        $cleanup->();
+        die $_;
+    };
+    $cleanup->();
+}
+
+sub with_lock($file, $code) {
+    my $lock = trylock($file) or die "$0: Cannot lock $file: $!\n";
+    try {
+        $code->();
+    } catch {
+        $lock->release;
+        die $_;
+    };
+    $lock->release; 
+}
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        # add further options here with their default values
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        # specify further options here with references to their values in the $options hashref
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+os-backup-btrfs - BRIEF_DESCRIPTION
+
+=head1 SYNOPSIS
+
+os-backup-btrfs [options]
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<os-backup-btrfs> will ...
+
+=cut
