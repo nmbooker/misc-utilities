@@ -1,0 +1,46 @@
+#! /usr/bin/env python3
+
+"""Compress and take checksum of file simultaneously.
+
+Takes filename on command line.
+
+Compressed file will be filename.xz in same directory.
+
+Checksum will be in filename.sha1 in same directory.
+"""
+
+import sys
+import argparse
+from subprocess import Popen, PIPE
+import os
+import tempfile
+
+def main(options):
+    """Main program."""
+    filename = options.filename
+    sum_name = filename + '.sha256'
+    cmp_name = filename + '.xz'
+    with open(filename, 'rb') as infile_cmp, open(sum_name, 'wb') as summed_fd, open(cmp_name, 'wb') as cmp_fd: 
+        compressor = Popen(['xz'], stdin=infile_cmp, stdout=cmp_fd)
+        summer = Popen(['sha256sum', filename], stdout=summed_fd)
+        
+        compress_result = compressor.wait()
+        sum_result = summer.wait()
+
+        sys.stderr.write('xz exit status: %d\n' % compress_result)
+        sys.stderr.write('sha256sum exit status: %d\n' % sum_result)
+    return
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="Compress and take checksum of file simultaneously.",
+    )
+    # parser.add_argument() calls here
+    parser.add_argument('filename', help='name of file to compress')
+    options = parser.parse_args()
+    # extra processing of options here
+    return options
+
+if __name__ == "__main__":
+    main(get_options())

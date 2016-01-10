@@ -1,0 +1,11 @@
+#! /bin/bash
+
+# Usage: out-err-to file prog [args...]
+
+# Capture stdout and stderr of prog args[...] into file
+# Useful with xargs and parallel
+
+# SCRIPTDIR: Get the (relative) path to the script
+# SCRIPTDIR="$(dirname "$0")"
+
+# TODO
