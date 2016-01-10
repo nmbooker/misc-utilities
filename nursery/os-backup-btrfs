@@ -12,11 +12,13 @@ no warnings 'experimental::signatures';
 use autodie;
 
 use DateTime;
+use Sys::Hostname;
 use File::Spec::Functions qw/catfile/;
 use Try::Tiny;
 use LockFile::Simple qw/trylock unlock/;
+use Data::Dumper;
 
-use subs qw/with_snapshot with_lock/;
+use subs qw/with_snapshot with_lock with_bind/;
 
 my $options = get_options();
 
@@ -24,28 +26,54 @@ my $lockfile = "/var/run/os-backup-btrfs";
 with_lock $lockfile => sub {
     my $time = DateTime->now();
     with_snapshot '/', '/_snap_os_backup' => sub($root, $snapshot) {
-        my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
-        my $hostname = `/bin/hostname`;
-        my $backup_basedir = '/data/os-backup';
-        my $target = catfile(
-            $backup_basedir,
-            $hostname,
-            $hostname.'_os-backup_'.$stamp
-        );
-        my @cmd = (
-            qw[ dar -c ],
-            $target,
-            -s => '1G',
-            '-z',
-            -R => $snapshot,
-            -P => catfile($snapshot, $backup_basedir),
-            -P => '/data',
-            '-3' => 'sha1',
-        );
-        say STDERR "@cmd";
-        system @cmd;
+        with_bind '/boot', catfile($snapshot, 'boot'), sub {
+            my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
+            my $hostname = hostname();
+            my $backup_basedir = '/data/os-backup';
+            my $backup_basedir_in_snapshot = $backup_basedir;
+            $backup_basedir_in_snapshot =~ s|^/+||g;
+            my $targetdir = catfile($backup_basedir, $hostname);
+            system qw/mkdir -p/, $targetdir;
+            my $target = catfile(
+                $targetdir,
+                $hostname.'_os-backup_'.$stamp
+            );
+            my @prune = (qw[tmp var/tmp data], $backup_basedir_in_snapshot);
+            my @nocompress = qw(
+                *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
+                *.tif *.tiff *.png *.jpg *.jpeg
+                *.ogg *.ogv *.mp3 *.flac
+                vmlinuz* initrd.img-*
+            );
+            my @cmd = (
+                'dar', '-c', $target,
+                '-s', '1G',
+                '-z',
+                '-R', $snapshot,
+                (map { ('-P' => $_) } @prune),
+                (map { ('-Z' => $_) } @nocompress),
+                '-3', 'sha1',
+            );
+            say STDERR Dumper(\@cmd);
+            system @cmd;
+        };
     };
 };
+
+sub with_bind($orig, $mountpoint, $code) {
+    system qw/mount --bind/, $orig, $mountpoint;
+    my $cleanup = sub {
+        try { system 'umount', $mountpoint }
+        catch {
+            warn "$0: umount $mountpoint failed: $_";
+        };
+    };
+    try { $code->() } catch {
+        $cleanup->();
+        die $_;
+    } ;
+    $cleanup->();
+}
 
 sub with_snapshot($orig, $snapshot, $code) {
     system qw( btrfs subvolume snapshot -r ), $orig, $snapshot;
