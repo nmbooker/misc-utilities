@@ -22,10 +22,9 @@ my $seen = Set::Scalar->new();
 
 sub handle_write {
     my $e = shift;
-    my $mbox = Mail::Box::Mbox->new(
-	folder => $mailbox,
-	lock_type => 'none',
-    );
+    my $mbox = Mail::Box::Mbox->new( folder => $mailbox, lock_type => 'none')
+        or die "$0: could not open mailbox $mailbox: $!";
+
     my @messages = $mbox->messages('ACTIVE');
     my @new;
     foreach my $msg (@messages) {
