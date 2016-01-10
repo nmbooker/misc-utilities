@@ -140,7 +140,7 @@ __END__
 
 =head1 NAME
 
-os-backup-btrfs - BRIEF_DESCRIPTION
+os-backup-btrfs - Back up OS on btrfs filesystem
 
 =head1 SYNOPSIS
 
@@ -167,6 +167,14 @@ Print the manual page and exit.
 
 =head1 DESCRIPTION
 
-B<os-backup-btrfs> will ...
+B<os-backup-btrfs> will back up the running Linux operating system to a dar
+file in C</data/os-backup/$HOSTNAME>, assuming the root filesystem is on btrfs.
+
+It assumes you don't want to back up /data, and tries to be intelligent about
+the OS directories it backs up (for example /tmp and /var/tmp are pruned out),
+and about which files to compress in the archive for speed.
+
+It's extremely experimental so I'm not going to document here precisely what it
+does: see the source code for the latest on that.
 
 =cut
