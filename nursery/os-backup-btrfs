@@ -1,8 +1,10 @@
 #! /usr/bin/env perl
 
 # Back up OS on btrfs filesystem
-#
-# apt-get install dar par2 liblockfile-simple-perl libdatetime-perl libtry-tiny-perl
+
+# TODO: Scrap incomplete batches (ones not in .increments file)
+#       Need to decide whether to do that at start or at end
+
 
 use v5.20;
 use warnings;
@@ -11,51 +13,77 @@ use feature 'signatures';
 no warnings 'experimental::signatures';
 use autodie;
 
+use Cwd qw/cwd/;
 use DateTime;
 use Sys::Hostname;
 use File::Spec::Functions qw/catfile/;
 use Try::Tiny;
 use LockFile::Simple qw/trylock unlock/;
 use Data::Dumper;
+use List::MoreUtils qw/uniq/;
+use List::UtilsBy qw/max_by/;
+use File::Slurp qw/read_file write_file/;
 
-use subs qw/with_snapshot with_lock with_bind/;
+use subs qw/with_snapshot with_lock with_bind in_dir/;
 
 my $options = get_options();
+
+sub next_increment_base($dir) {
+    my @nextbase = read_file(catfile($dir, '.increments'),
+        err_mode => 'carp', chomp => 1);
+    return $nextbase[-1];
+}
+
+sub set_latest_increment($dir, $basename) {
+    write_file(catfile($dir, '.increments'),
+        {append => 1}, $basename."\n");
+}
 
 my $lockfile = "/var/run/os-backup-btrfs";
 with_lock $lockfile => sub {
     my $time = DateTime->now();
     with_snapshot '/', '/_snap_os_backup' => sub($root, $snapshot) {
         with_bind '/boot', catfile($snapshot, 'boot'), sub {
+            my $month = $time->strftime('%Y-%m');
             my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
             my $hostname = hostname();
             my $backup_basedir = '/data/os-backup';
             my $backup_basedir_in_snapshot = $backup_basedir;
             $backup_basedir_in_snapshot =~ s|^/+||g;
-            my $targetdir = catfile($backup_basedir, $hostname);
+            my $targetdir = catfile($backup_basedir, $hostname, $month);
             system qw/mkdir -p/, $targetdir;
-            my $target = catfile(
-                $targetdir,
-                $hostname.'_os-backup_'.$stamp
-            );
-            my @prune = (qw[tmp var/tmp data], $backup_basedir_in_snapshot);
-            my @nocompress = qw(
-                *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
-                *.tif *.tiff *.png *.jpg *.jpeg
-                *.ogg *.ogv *.mp3 *.flac
-                vmlinuz* initrd.img-*
-            );
-            my @cmd = (
-                'dar', '-c', $target,
-                '-s', '1G',
-                '-z',
-                '-R', $snapshot,
-                (map { ('-P' => $_) } @prune),
-                (map { ('-Z' => $_) } @nocompress),
-                '-3', 'sha1',
-            );
-            say STDERR Dumper(\@cmd);
-            system @cmd;
+            in_dir $targetdir => sub {
+                my $refbase = next_increment_base($targetdir);
+                my $backup_type = defined($refbase) ? 'inc' : 'full';
+                my $basename = sprintf('%s_os-backup_%s_%s', $hostname, $backup_type, $stamp);
+                my @prune = (qw[tmp var/tmp data], $backup_basedir_in_snapshot);
+                my @nocompress = qw(
+                    *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
+                    *.tif *.tiff *.png *.jpg *.jpeg
+                    *.ogg *.ogv *.mp3 *.flac
+                    vmlinuz* initrd.img-*
+                );
+                my @cmd = (
+                    'dar', '-c', $basename,
+                    (map { (-A => $_ ) } grep { defined } $refbase),
+                    '-s', '1G',
+                    '-z',
+                    '-R', $snapshot,
+                    (map { ('-P' => $_) } @prune),
+                    (map { ('-Z' => $_) } @nocompress),
+                    '-3', 'sha1',
+                );
+                say STDERR Dumper(\@cmd);
+                return if $ENV{DRYRUN};
+                my $retval = system(@cmd);
+                if ($retval == 0) {
+                    say STDERR "$0: dar backup succeeded.  Updating latest increment file...";
+                    set_latest_increment($targetdir, $basename);
+                }
+                else {
+                    say STDERR "$0: dar exited with error status $retval";
+                }
+            };
         };
     };
 };
@@ -102,6 +130,21 @@ sub with_lock($file, $code) {
     };
     $lock->release; 
 }
+
+sub in_dir($dir, $code) {
+    my $origdir = cwd();
+    my $cleanup = sub {
+        chdir $origdir;
+    };
+    chdir $dir;
+    try { $code->() }
+    catch {
+        $cleanup->();
+        die $_;
+    };
+    $cleanup->();
+}
+
 
 sub get_options {
     use File::Basename qw(basename);
