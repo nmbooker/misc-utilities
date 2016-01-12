@@ -10,6 +10,7 @@ no warnings 'experimental::signatures';
 use autodie;
 
 use Cwd qw/cwd/;
+use Cwd::Guard qw/cwd_guard/;
 use DateTime;
 use Sys::Hostname;
 use File::Spec::Functions qw/catfile/;
@@ -69,7 +70,7 @@ sub dar_basename($slicename) {
     $slicename =~ s/\.[0-9]+\.dar(\.sha1)?//r
 }
 
-my $lockfile = "/var/run/os-backup-btrfs";
+my $lockfile = "/var/run/os-backup-btrfs.lock";
 with_lock $lockfile => sub {
     my $time = DateTime->now();
     with_snapshot '/', '/_snap_os_backup' => sub($root, $snapshot) {
@@ -83,6 +84,7 @@ with_lock $lockfile => sub {
             my $targetdir = catfile($backup_basedir, $hostname, $month);
             system qw/mkdir -p/, $targetdir;
             in_dir $targetdir => sub {
+                say STDERR "$0: cwd: ".cwd() if $options->{verbose} >= 2;
                 reap($_) for dead_archives();
                 my $refbase = next_increment_base();
                 my $backup_type = defined($refbase) ? 'inc' : 'full';
@@ -118,6 +120,7 @@ with_lock $lockfile => sub {
                     say STDERR "$0: dar failed with status $retval";
                 }
             };
+            say STDERR "$0: cwd: ".cwd() if $options->{verbose} >= 2;
         };
     };
 };
@@ -166,17 +169,8 @@ sub with_lock($file, $code) {
 }
 
 sub in_dir($dir, $code) {
-    my $origdir = cwd();
-    my $cleanup = sub {
-        chdir $origdir;
-    };
-    chdir $dir;
-    try { $code->() }
-    catch {
-        $cleanup->();
-        die $_;
-    };
-    $cleanup->();
+    my $guard = cwd_guard($dir);
+    $code->();
 }
 
 
