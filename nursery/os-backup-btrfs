@@ -17,8 +17,6 @@ use File::Spec::Functions qw/catfile/;
 use Try::Tiny;
 use LockFile::Simple qw/trylock unlock/;
 use Data::Dumper;
-use List::MoreUtils qw/uniq/;
-use List::UtilsBy qw/max_by/;
 use File::Slurp qw/read_file write_file/;
 use Set::Scalar;
 use File::Glob qw/:bsd_glob/;
