@@ -31,7 +31,7 @@ sub next_increment_base {
     return $incs[-1];
 }
 
-sub set_latest_increment($dir, $basename) {
+sub record_increment($dir, $basename) {
     write_file(catfile($dir, '.increments'),
         {append => 1}, $basename."\n");
 }
@@ -46,6 +46,7 @@ sub reap($archive_basename) {
     my @cmd = ('rm', @slices);
     say Dumper(\@cmd) if $options->{verbose} >= 2;
     system @cmd unless $options->{dryrun};
+    say STDERR "reaped $archive_basename";
 }
 
 sub archives {
@@ -112,7 +113,7 @@ with_lock $lockfile => sub {
                     say STDERR "$0: dar backup succeeded with status $retval." unless $options->{silent};
                     say STDERR "$0: one or more file changed while backing it up" if $retval == 11;
                     say STDERR "$0: Recording finished increment..." if $options->{verbose};
-                    set_latest_increment($targetdir, $basename);
+                    record_increment($targetdir, $basename);
                 }
                 else {
                     say STDERR "$0: dar failed with status $retval";
