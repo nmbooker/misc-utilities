@@ -2,10 +2,6 @@
 
 # Back up OS on btrfs filesystem
 
-# TODO: Scrap incomplete batches (ones not in .increments file)
-#       Need to decide whether to do that at start or at end
-
-
 use v5.20;
 use warnings;
 use strict;
@@ -23,20 +19,54 @@ use Data::Dumper;
 use List::MoreUtils qw/uniq/;
 use List::UtilsBy qw/max_by/;
 use File::Slurp qw/read_file write_file/;
+use Set::Scalar;
+use File::Glob qw/:bsd_glob/;
+use Carp qw/carp/;
 
 use subs qw/with_snapshot with_lock with_bind in_dir/;
 
 my $options = get_options();
 
-sub next_increment_base($dir) {
-    my @nextbase = read_file(catfile($dir, '.increments'),
-        err_mode => 'carp', chomp => 1);
-    return $nextbase[-1];
+sub next_increment_base {
+    my @incs = finished_increments();
+    return $incs[-1];
 }
 
 sub set_latest_increment($dir, $basename) {
     write_file(catfile($dir, '.increments'),
         {append => 1}, $basename."\n");
+}
+
+sub reap($archive_basename) {
+    say STDERR "reap unfinished archive: $archive_basename";
+    my @slices = (bsd_glob("$archive_basename.*.dar"), bsd_glob("$archive_basename.*.dar.sha1"));
+    unless (@slices) {
+        carp "(reap) no slices to delete reaping $archive_basename";
+        return;
+    }
+    my @cmd = ('rm', @slices);
+    say Dumper(\@cmd) if $options->{verbose} >= 2;
+    system @cmd unless $options->{dryrun};
+}
+
+sub archives {
+    Set::Scalar->new(map { dar_basename($_) } slices_in_cwd())->members
+}
+
+sub slices_in_cwd { bsd_glob('*.*.dar') }   # run in correct working directory
+
+sub finished_increments {
+    read_file('.increments', err_mode => 'carp', chomp => 1)
+}
+
+sub dead_archives {
+    my $finished = Set::Scalar->new(finished_increments());
+    my $archives = Set::Scalar->new(archives());
+    return $archives->difference($finished)->members;
+}
+
+sub dar_basename($slicename) {
+    $slicename =~ s/\.[0-9]+\.dar(\.sha1)?//r
 }
 
 my $lockfile = "/var/run/os-backup-btrfs";
@@ -53,7 +83,8 @@ with_lock $lockfile => sub {
             my $targetdir = catfile($backup_basedir, $hostname, $month);
             system qw/mkdir -p/, $targetdir;
             in_dir $targetdir => sub {
-                my $refbase = next_increment_base($targetdir);
+                reap($_) for dead_archives();
+                my $refbase = next_increment_base();
                 my $backup_type = defined($refbase) ? 'inc' : 'full';
                 my $basename = sprintf('%s_os-backup_%s_%s', $hostname, $backup_type, $stamp);
                 my @prune = (qw[tmp var/tmp data], $backup_basedir_in_snapshot);
@@ -73,15 +104,18 @@ with_lock $lockfile => sub {
                     (map { ('-Z' => $_) } @nocompress),
                     '-3', 'sha1',
                 );
-                say STDERR Dumper(\@cmd);
-                return if $ENV{DRYRUN};
+                push @cmd, '-q' if $options->{silent};
+                say STDERR Dumper(\@cmd) if $options->{verbose} >= 2;
+                return if $options->{dryrun};
                 my $retval = system(@cmd);
-                if ($retval == 0) {
-                    say STDERR "$0: dar backup succeeded.  Updating latest increment file...";
+                if ($retval == 0 or $retval == 11) {
+                    say STDERR "$0: dar backup succeeded with status $retval." unless $options->{silent};
+                    say STDERR "$0: one or more file changed while backing it up" if $retval == 11;
+                    say STDERR "$0: Recording finished increment..." if $options->{verbose};
                     set_latest_increment($targetdir, $basename);
                 }
                 else {
-                    say STDERR "$0: dar exited with error status $retval";
+                    say STDERR "$0: dar failed with status $retval";
                 }
             };
         };
@@ -156,14 +190,18 @@ sub get_options {
     my $options = {
         help => 0,
         man => 0,
-        # add further options here with their default values
+        verbose => 0,
+        dryrun => 0,
+        silent => 0,
     };
 
     Getopt::Long::Configure(qw{gnu_getopt});
     my $parsed_ok = GetOptions(
         'h|help'    =>  \$options->{help},
         'man'       =>  \$options->{man},
-        # specify further options here with references to their values in the $options hashref
+        'v|verbose+' =>  \$options->{verbose},
+        'dryrun'    =>  \$options->{dryrun},
+        'silent'    =>  \$options->{silent},
     );
 
     pod2usage(-exitval => 2) unless $parsed_ok;
@@ -193,6 +231,10 @@ os-backup-btrfs [options]
     -h, --help              brief help message
     --man                   full documentation
 
+    -v, --verbose           once to output status messages, again to output command line arguments
+    --dryrun                don't create or delete any archives (note snapshots are still created!)
+    --silent                skip dar summary report and "dar backup succeeded" message
+
 =head1 OPTIONS
 
 =over 8
@@ -205,13 +247,38 @@ Print a brief help message and exit.
 
 Print the manual page and exit.
 
+=item B<--verbose> or B<-v>
+
+If provided once, progress messages are printed.
+
+A second occurrence of B<-v> causes the command lines to be printed before each command too.
+This is useful with B<--dry-run> for debugging.
+
+=item B<--dryrun>
+
+Don't create or remove any archives.  Note that other actions, such as creating and
+removing snapshots, mounting and unmounting data, and creating target directories, are still
+performed.
+
+=item B<--silent>
+
+Suppress success message at the end.
+Also suppresses C<dar>'s summary report (C<dar -q>)
+
+It doesn't silence error messages and warnings.
+
+Once I've worked out how to silence C<btrfs subvolume> this will ensure you don't get mailed
+from cron unless something fails.
+Watch this space (I also welcome pull requests).
+
+Note this does not conflict with B<--verbose>
 
 =back
 
 =head1 DESCRIPTION
 
 B<os-backup-btrfs> will back up the running Linux operating system to a dar
-file in C</data/os-backup/$HOSTNAME>, assuming the root filesystem is on btrfs.
+archive in C</data/os-backup/$HOSTNAME>, assuming the root filesystem is on btrfs.
 
 It assumes you don't want to back up /data, and tries to be intelligent about
 the OS directories it backs up (for example /tmp and /var/tmp are pruned out),
