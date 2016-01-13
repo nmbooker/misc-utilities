@@ -88,7 +88,7 @@ with_lock $lockfile => sub {
                 my $refbase = next_increment_base();
                 my $backup_type = defined($refbase) ? 'inc' : 'full';
                 my $basename = sprintf('%s_os-backup_%s_%s', $hostname, $backup_type, $stamp);
-                my @prune = (qw[tmp var/tmp data], $backup_basedir_in_snapshot);
+                my @prune = (qw[tmp var/tmp var/cache var/spool/cups home/*/.cache home/*/.thumbnails data], $backup_basedir_in_snapshot);
                 my @nocompress = qw(
                     *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
                     *.tif *.tiff *.png *.jpg *.jpeg
@@ -98,12 +98,14 @@ with_lock $lockfile => sub {
                 my @cmd = (
                     'dar', '-c', $basename,
                     (map { (-A => $_ ) } grep { defined } $refbase),
-                    '-s', '1G',
-                    '-z',
+                    '-s', '1G',   # slices of 1G
+                    '-Q',   # don't warn when not run in terminal
+                    '-z',   # compress files
                     '-R', $snapshot,
+                    '-D',   # store empty directory where pruned
                     (map { ('-P' => $_) } @prune),
                     (map { ('-Z' => $_) } @nocompress),
-                    '-3', 'sha1',
+                    '-3', 'sha1',   # Make sha1 hash file per slice
                 );
                 push @cmd, '-q' if $options->{silent};
                 say STDERR Dumper(\@cmd) if $options->{verbose} >= 2;
