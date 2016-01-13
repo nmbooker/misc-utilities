@@ -4,7 +4,6 @@
 
 use warnings;
 use strict;
-use diagnostics;
 use IO::File;
 
 my $options = get_options();
@@ -19,9 +18,9 @@ my $script = <<"END_SCRIPT";
 
 # TODO: BRIEF_DESCRIPTION
 
+use v5.10;
 use warnings;
 use strict;
-use diagnostics;
 
 my \$options = get_options();
 # TODO: MAIN CODE HERE
