@@ -1,0 +1,234 @@
+#! /usr/bin/env perl
+
+# Deps:
+#  libfailures-perl libtry-tiny-perl libsafe-isa-perl liblist-moreutils-perl
+#  libscalar-list-utils-perl libio-captureoutput-perl
+
+use v5.20;
+use warnings;
+use strict;
+use feature 'signatures';
+no warnings 'experimental::signatures';
+use List::MoreUtils qw/uniq/;
+use List::Util qw/sum min max/;
+use File::Basename qw/basename dirname/;
+use File::stat;
+use failures qw/chunking::toobig/;
+use Try::Tiny;
+use Safe::Isa;
+use autodie;
+use IO::CaptureOutput;
+use Cwd::Guard;
+
+my $options = get_options();
+
+my $dar_basename = shift @ARGV;
+
+my @slicenames = uniq
+             sort { slice_number($a) <=> slice_number($b) }
+             slices($dar_basename);
+
+my @slices = map {
+    my @files = slicefiles($_);
+    { name => $_, files => [@files], size => filesize(@files) }
+} @slicenames;
+
+my $max_chunk_bytes = 1073741911;
+
+my @chunks = try {
+    split_with(
+        elements => \@slices,
+        max_chunk_size => $max_chunk_bytes,
+        elem_size_func => sub($slice) { $slice->{size} },
+    )
+}
+catch {
+    if ($_->$_isa('failure::chunking')) {
+        my $msg = $_->msg;
+        my $element_name = $_->payload->{element}->{name};
+        die "$0: Failed: $msg: $element_name\n";
+    }
+    die $_;
+};
+
+
+if ($options->{print_chunkings}) {
+    my $chunknum;
+    for my $chunk (@chunks) {
+        $chunknum++;
+        my @slices = @{$chunk};
+        my $chunksize = sum map { $_->{size} } @slices;
+        say "$chunknum [$chunksize]:";
+        for my $slice (@slices) {
+            say "  $_" for @{$slice->{files}};
+        }
+    }
+}
+if (my $isobase = $options->{iso_basename}) {
+    my $labelbase = $options->{labelbase} // basename($isobase);
+    my $chunknum;
+    CHUNK: for my $chunk (@chunks) {
+        $chunknum++;
+        my $first = min(chunk_slice_numbers($chunk));
+        my $last = max(chunk_slice_numbers($chunk));
+        my $range = $first == $last ? "$first" : "$first-$last";
+        my $basepath = sprintf('%s_%s', $isobase, $range);
+        my $catpath = sprintf('%s.list', $basepath);
+        my $isopath = sprintf('%s.iso', $basepath);
+        my $label = sprintf('%s_%s', $labelbase, $range);
+        my @isolist = map { @{$_->{files}} } @$chunk;
+        open my $cat, '>', $catpath;
+        say $cat sprintf('/%s=%s', basename($_), $_) for @isolist;
+        $cat->close;
+        my @cmd = (
+            'genisoimage', '-quiet', '-V', $label, '-J', '-r',
+            '-o', $isopath, '-graft-points', 
+            '-path-list', $catpath,
+        );
+        my $iso_exitcode = system(@cmd);
+        if ($iso_exitcode != 0) {
+            die "exit status $iso_exitcode: @cmd\n";
+        }
+        next CHUNK unless $options->{hash} eq 'sha1';
+        my $guard = cwd_guard(dirname($isopath));
+        my ($sha1_exitcode, $shasum, $shaerr);
+        my @shacmd = ('sha1sum', '-b', basename($isopath));
+        capture(sub {
+            $sha1_exitcode = system(@shacmd);
+        }, \$shasum, \$shaerr);
+        print $shaerr;
+        if ($sha1_exitcode != 0) {
+            die "exit status $sha1_exitcode: @shacmd\n";
+        }
+        open my $shafile, '>', basename($isopath).".sha1";
+        print $shafile $shasum;
+        say $isopath;
+    }
+}
+
+sub chunk_slice_numbers($chunk) {
+    my @slices = @$chunk;
+    return map { slice_number($_->{name}) } @slices;
+}
+sub slice_number($filename) {
+    my $unix_basename = basename($filename);
+    return $1 if ($unix_basename =~ /\.([0-9]+)\.dar(\.*)/);
+}
+
+sub slices($dar_basename) { <$dar_basename.*.dar> }
+
+sub slicefiles($dar_slicename) { <$dar_slicename*> }
+
+sub filesize(@files) { sum map { stat($_)->size } @files }
+
+sub split_with {
+    # TODO: Put this into its own module
+    # Generalised version of MITHALDU's Array::Split::split_by (c) 2010 Christian Walde under DWTFYW public license v2
+    my %params = @_;
+    my ($orig, $max_size, $size) = @params{qw/elements max_chunk_size elem_size_func/};
+    my @sub_arrays;
+    my @original = @$orig;
+    return unless @original;   # If there's nothing there, we have no chunks
+    ELEM: for my $element ( @original ) {
+        my $esize = $element->$size;
+        if ($esize > $max_size) {
+            failure::chunking::toobig->throw({
+                msg => "element larger than maximum chunk size $max_size",
+                payload => { element => $element },
+            });
+        }
+        push @sub_arrays, [] if !@sub_arrays;
+        push @sub_arrays, []
+            if (sum($esize, map { $_->$size } @{$sub_arrays[-1]}) > $max_size);
+        push @{ $sub_arrays[-1] }, $element;
+    }
+    return @sub_arrays;
+}
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        print_chunkings => 0,
+        iso_basename => undef,
+        labelbase => undef,
+        hash => undef,
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        'print-chunks' => \$options->{print_chunkings},
+        'c|make-isos=s' => \$options->{iso_basename},
+        'labelbase=s' => \$options->{labelbase},
+        '3|hash=' => \$options->{hash},
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+    
+    if ($options->{hash}) {
+        pod2usage(-exitval => 2) unless $options->{hash} eq 'sha1';
+    }
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+dar-pack-isos - pack slices of a DAR archive into fixed-size ISO images
+
+=head1 SYNOPSIS
+
+dar-pack-isos [options] -s SIZE dar_basename
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+    --print-chunks          print chunks to stderr
+    -c ISOBASE, --make-isos=ISOBASE
+                            make ISO files with the given base name
+    -s SIZE, --slice-size=SIZE
+                            maximize size of ISO files in bytes
+    -3 sha1, --hash=sha1    generate SHA-1 hash files
+
+    --labelbase=LABELBASE   override ISO
+
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<dar-pack-isos> will ...
+
+=cut
