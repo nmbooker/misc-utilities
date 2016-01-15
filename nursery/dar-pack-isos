@@ -2,7 +2,7 @@
 
 # Deps:
 #  libfailures-perl libtry-tiny-perl libsafe-isa-perl liblist-moreutils-perl
-#  libscalar-list-utils-perl libio-captureoutput-perl
+#  libscalar-list-utils-perl libio-captureoutput-perl libcwd-guard-perl
 
 use v5.20;
 use warnings;
@@ -17,12 +17,12 @@ use failures qw/chunking::toobig/;
 use Try::Tiny;
 use Safe::Isa;
 use autodie;
-use IO::CaptureOutput;
-use Cwd::Guard;
+use IO::CaptureOutput qw/capture/;
+use Cwd::Guard qw/cwd_guard/;
 
 my $options = get_options();
 
-my $dar_basename = shift @ARGV;
+my $dar_basename = $options->{basename};
 
 my @slicenames = uniq
              sort { slice_number($a) <=> slice_number($b) }
@@ -33,7 +33,7 @@ my @slices = map {
     { name => $_, files => [@files], size => filesize(@files) }
 } @slicenames;
 
-my $max_chunk_bytes = 1073741911;
+my $max_chunk_bytes = $options->{slice_size} // 4.5e9;
 
 my @chunks = try {
     split_with(
@@ -89,7 +89,7 @@ if (my $isobase = $options->{iso_basename}) {
         if ($iso_exitcode != 0) {
             die "exit status $iso_exitcode: @cmd\n";
         }
-        next CHUNK unless $options->{hash} eq 'sha1';
+        next CHUNK unless $options->{hash} and $options->{hash} eq 'sha1';
         my $guard = cwd_guard(dirname($isopath));
         my ($sha1_exitcode, $shasum, $shaerr);
         my @shacmd = ('sha1sum', '-b', basename($isopath));
@@ -159,6 +159,7 @@ sub get_options {
         iso_basename => undef,
         labelbase => undef,
         hash => undef,
+        slice_size => undef,
     };
 
     Getopt::Long::Configure(qw{gnu_getopt});
@@ -168,7 +169,8 @@ sub get_options {
         'print-chunks' => \$options->{print_chunkings},
         'c|make-isos=s' => \$options->{iso_basename},
         'labelbase=s' => \$options->{labelbase},
-        '3|hash=' => \$options->{hash},
+        '3|hash=s' => \$options->{hash},
+        's|slice-size=i' => \$options->{slice_size},
     );
 
     pod2usage(-exitval => 2) unless $parsed_ok;
@@ -184,6 +186,8 @@ sub get_options {
     if ($options->{hash}) {
         pod2usage(-exitval => 2) unless $options->{hash} eq 'sha1';
     }
+
+    $options->{basename} = shift @ARGV or pod2usage(-exitval => 2);
 
     return $options;
 }
