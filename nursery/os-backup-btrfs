@@ -78,8 +78,8 @@ with_lock $lockfile => sub {
             my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
             my $hostname = hostname();
             my $backup_basedir = '/data/os-backup';
-            my $backup_basedir_in_snapshot = $backup_basedir;
-            $backup_basedir_in_snapshot =~ s|^/+||g;
+            my $backup_basedir_relative = $backup_basedir;
+            $backup_basedir_relative =~ s|^/+||g;
             my $targetdir = catfile($backup_basedir, $hostname, $month);
             system qw/mkdir -p/, $targetdir;
             in_dir $targetdir => sub {
@@ -88,7 +88,7 @@ with_lock $lockfile => sub {
                 my $refbase = next_increment_base();
                 my $backup_type = defined($refbase) ? 'inc' : 'full';
                 my $basename = sprintf('%s_os-backup_%s_%s', $hostname, $backup_type, $stamp);
-                my @prune = (qw[tmp var/tmp var/cache var/spool/cups home/*/.cache home/*/.thumbnails data], $backup_basedir_in_snapshot);
+                my @prune = (qw[data tmp var/tmp var/cache/apt/archives home/*/.cache home/*/.thumbnails], $backup_basedir_relative);
                 my @nocompress = qw(
                     *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
                     *.tif *.tiff *.png *.jpg *.jpeg
