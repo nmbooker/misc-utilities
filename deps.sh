@@ -11,3 +11,6 @@ sudo apt-get -y install aptitude
 
 # For os-backup-btrfs
 sudo apt-get -y install dar par2 liblockfile-simple-perl libdatetime-perl libtry-tiny-perl libfile-slurp-perl btrfs-tools libset-scalar-perl libcwd-guard-perl
+
+# For dar-pack-isos
+sudo apt-get -y install liblist-moreutils-perl libscalar-list-utils-perl libfailures-perl libtry-tiny-perl libsafe-isa-perl libio-captureoutput-perl libcwd-guard-perl
