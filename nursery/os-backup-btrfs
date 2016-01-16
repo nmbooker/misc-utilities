@@ -69,6 +69,8 @@ sub dar_basename($slicename) {
     $slicename =~ s/\.[0-9]+\.dar(\.sha1)?//r
 }
 
+my $backup_basedir = $ENV{OS_BACKUP_BASEDIR} // '/data/os-backup';
+
 my $lockfile = "/var/run/os-backup-btrfs.lock";
 with_lock $lockfile => sub {
     my $time = DateTime->now();
@@ -77,7 +79,6 @@ with_lock $lockfile => sub {
             my $month = $time->strftime('%Y-%m');
             my $stamp = $time->strftime('%Y-%m-%d_%H:%M:%S');
             my $hostname = hostname();
-            my $backup_basedir = '/data/os-backup';
             my $backup_basedir_relative = $backup_basedir;
             $backup_basedir_relative =~ s|^/+||g;
             my $targetdir = catfile($backup_basedir, $hostname, $month);
