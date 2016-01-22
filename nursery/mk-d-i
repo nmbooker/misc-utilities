@@ -1,0 +1,116 @@
+#! /usr/bin/env perl
+
+# Make a d-i thumb drive
+
+use v5.20;
+use warnings;
+use strict;
+use Term::ReadLine;
+use File::Temp qw/tempdir/;
+use autodie;
+use Cwd::Guard qw/cwd_guard/;
+use Cwd qw/getcwd/;
+use File::Basename qw/basename/;
+
+my $options = get_options();
+
+my $dev = $options->{device};
+my $arch = $options->{arch};
+my $term = Term::ReadLine->new(basename($0));
+say STDERR "The identity of your chosen drive is:";
+system qw/blkid/, $dev;
+my $OUT = $term->OUT || \*STDOUT;
+my $response = $term->readline('Are you sure you want to wipe that device [y/n]? ');
+unless ($response eq 'y') {
+    say STDERR "User quit";
+    exit 0;
+}
+system qw/umount/, <$dev*>;
+
+my $tmpdir = tempdir( CLEANUP => 1 );
+
+for (cwd_guard($tmpdir) or die "failed chdir: $Cwd::Guard::Error") {
+    say STDERR "Working in " . getcwd();
+    my $baseurl = "http://cdimage.debian.org/cdimage/daily-builds/daily/arch-latest/$arch/iso-cd/";
+    my $uri = "https://d-i.debian.org/daily-images/amd64/daily/hd-media/boot.img.gz";
+    system('wget', $uri) == 0 or die "wget of boot.img.gz failed";
+    say STDERR "gunzip...";
+    system('gunzip', "boot.img.gz") == 0 or die "gunzip of boot.img.gz failed";
+    say STDERR "dd...";
+    system('dd', "if=boot.img", "of=$dev", "bs=1M")== 0 or die "failed to dd boot.img to $dev";
+    say STDERR "sync...";
+    system 'sync';
+}
+
+
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        arch => 'amd64',
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        'arch=s'      =>  \$options->{arch},
+        # specify further options here with references to their values in the $options hashref
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+    $options->{device} = $ARGV[0]
+        or pod2usage(-exitval => 2, -msg => "$prog: Error: device not specified");
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+mkdi - BRIEF_DESCRIPTION
+
+=head1 SYNOPSIS
+
+mkdi [options] device
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<mkdi> will ...
+
+=cut
