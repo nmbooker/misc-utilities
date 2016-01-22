@@ -21,6 +21,11 @@ unless (any { /^\s*ecryptfs\s*(#.*)?$/ } read_file('/etc/modules')) {
 # load ecryptfs module
 system qw/modprobe ecryptfs/;
 
+
+edit_file_lines {
+    s/^/# / if /^\s*Acquire::http::Proxy/i;
+} '/etc/apt/apt.conf';
+
 # Enable nonfree stuff - yucky but necessary until:
 #   * I shed myself of hardware requiring nonfree firmware (which will take a while)
 #   * I can install FDL documentation from main (so probably never)
@@ -45,8 +50,9 @@ END
 
 system qw/apt-get update/;
 
+
 # install from main distro if available, else sid
-system qw/apt-get install ecryptfs-utils/;
+system qw/apt-get -y install ecryptfs-utils/;
 
 # Now tighten up preferences
 write_file '/etc/apt/preferences.d/unstable', {atomic => 1}, => <<END;
@@ -59,6 +65,8 @@ Package: *
 Pin: release o=Debian
 Pin-Priority: -10
 END
+
+system qw/apt-get -y install squid-deb-proxy-client/;
 
 sub get_options {
     use File::Basename qw(basename);
