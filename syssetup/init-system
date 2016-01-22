@@ -1,0 +1,129 @@
+#! /usr/bin/env perl
+
+# Initialise my debian system
+
+use v5.20;
+use warnings;
+use strict;
+use autodie;
+use File::Slurp qw/:all :edit/;
+use List::Util qw/any/;
+
+my $options = get_options();
+
+# Put ecryptfs into /etc/modules
+
+unless (any { /^\s*ecryptfs\s*(#.*)?$/ } read_file('/etc/modules')) {
+    say STDERR "Adding ecryptfs to /etc/modules";
+    append_file '/etc/modules' => "\necryptfs\n";
+}
+
+# load ecryptfs module
+system qw/modprobe ecryptfs/;
+
+# Enable nonfree stuff - yucky but necessary until:
+#   * I shed myself of hardware requiring nonfree firmware (which will take a while)
+#   * I can install FDL documentation from main (so probably never)
+
+sub main_only_debian_line {
+    return shift =~ /^\s*deb(-src)?\s+http:\/\/[^\/]+\.debian\.org\/debian(-security)?\/?\s+\S+\s+main$/
+}
+
+edit_file_lines {
+    if (main_only_debian_line($_)) {
+        say STDERR "Editing line: $_";
+        s/$/ contrib non-free/;
+        say STDERR "Now: $_";
+    }
+} '/etc/apt/sources.list';
+
+# Enable sid repository
+write_file '/etc/apt/sources.list.d/unstable.list', {atomic => 1}, => <<END;
+deb http://ftp.us.debian.org/debian unstable main contrib non-free
+deb-src http://ftp.us.debian.org/debian unstable main contrib non-free
+END
+
+system qw/apt-get update/;
+
+# install from main distro if available, else sid
+system qw/apt-get install ecryptfs-utils/;
+
+# Now tighten up preferences
+write_file '/etc/apt/preferences.d/unstable', {atomic => 1}, => <<END;
+# The "only if I say so" approach from JoshuaRodman on https://wiki.debian.org/AptPreferences#Installing_from_unstable
+Package: *
+Pin: release a=testing
+Pin-Priority: 900
+
+Package: *
+Pin: release o=Debian
+Pin-Priority: -10
+END
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        # add further options here with their default values
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        # specify further options here with references to their values in the $options hashref
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+init-system - BRIEF_DESCRIPTION
+
+=head1 SYNOPSIS
+
+init-system [options]
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<init-system> will ...
+
+=cut
