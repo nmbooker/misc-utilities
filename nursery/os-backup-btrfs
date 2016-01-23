@@ -89,7 +89,7 @@ with_lock $lockfile => sub {
                 my $refbase = next_increment_base();
                 my $backup_type = defined($refbase) ? 'inc' : 'full';
                 my $basename = sprintf('%s_os-backup_%s_%s', $hostname, $backup_type, $stamp);
-                my @prune = (qw[data tmp var/tmp var/cache/apt/archives home/*/.cache home/*/.thumbnails], $backup_basedir_relative);
+                my @prune = (qw[data scratch fastscratch tmp var/tmp var/cache/apt/archives home/*/.cache home/*/.thumbnails], $backup_basedir_relative);
                 my @nocompress = qw(
                     *.gz *.bz2 *.xz *.tgz *.txz *.tbz2
                     *.tif *.tiff *.png *.jpg *.jpeg
