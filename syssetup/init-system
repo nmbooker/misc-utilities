@@ -44,8 +44,8 @@ edit_file_lines {
 
 # Enable sid repository
 write_file '/etc/apt/sources.list.d/unstable.list', {atomic => 1}, => <<END;
-deb http://ftp.us.debian.org/debian unstable main contrib non-free
-deb-src http://ftp.us.debian.org/debian unstable main contrib non-free
+deb http://ftp.uk.debian.org/debian unstable main contrib non-free
+deb-src http://ftp.uk.debian.org/debian unstable main contrib non-free
 END
 
 system qw/apt-get update/;
