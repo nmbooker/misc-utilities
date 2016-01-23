@@ -31,8 +31,7 @@ my $tmpdir = tempdir( CLEANUP => 1 );
 
 for (cwd_guard($tmpdir) or die "failed chdir: $Cwd::Guard::Error") {
     say STDERR "Working in " . getcwd();
-    my $baseurl = "http://cdimage.debian.org/cdimage/daily-builds/daily/arch-latest/$arch/iso-cd/";
-    my $uri = "https://d-i.debian.org/daily-images/amd64/daily/hd-media/boot.img.gz";
+    my $uri = "https://d-i.debian.org/daily-images/$arch/daily/hd-media/boot.img.gz";
     system('wget', $uri) == 0 or die "wget of boot.img.gz failed";
     say STDERR "gunzip...";
     system('gunzip', "boot.img.gz") == 0 or die "gunzip of boot.img.gz failed";
