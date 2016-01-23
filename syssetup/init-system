@@ -48,6 +48,17 @@ deb http://ftp.uk.debian.org/debian unstable main contrib non-free
 deb-src http://ftp.uk.debian.org/debian unstable main contrib non-free
 END
 
+write_file '/etc/apt/preferences.d/unstable', {atomic => 1}, => <<END;
+# Temporary so that ecryptfs-utils can come from sid if necessary
+Package: *
+Pin: release a=testing
+Pin-Priority: 900
+
+Package: *
+Pin: release a=unstable
+Pin-Priority: 800
+END
+
 system qw/apt-get update/;
 
 
