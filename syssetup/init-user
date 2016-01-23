@@ -1,0 +1,118 @@
+#! /usr/bin/env perl
+
+# TODO: BRIEF_DESCRIPTION
+
+use v5.10;
+use warnings;
+use strict;
+use autodie;
+use File::Spec::Functions qw/catfile/;
+use Sys::Hostname;
+use File::Glob qw/:bsd_glob/;
+
+my $options = get_options();
+
+my $home = $ENV{HOME} or die "HOME not set - sure you're running GNU/Linux?";
+
+my $host = hostname();
+
+unless (-d catfile($home, 'Private') and -d catfile($home, '.Private')) {
+    my @fnek = ($host eq 'oak') ? ('--no-fnek') : ();
+    system 'ecryptfs-setup-private', @fnek;
+    say 'Will now unwrap your mount passphrase - store it somewhere safe!';
+    system 'ecryptfs-unwrap-passphrase', catfile($home, '.ecryptfs', 'wrapped-passphrase');
+    say "";
+    say "IMPORTANT";
+    say "Now log out and back in, then run this script again.";
+    exit;
+}
+
+my $sshdir = catfile($home, '.ssh');
+unless (-e $sshdir) {
+    mkdir $sshdir;
+    system qw/chmod 755/, $sshdir;
+}
+
+do {
+    my @match = bsd_glob(catfile($sshdir, 'id_rsa*'));
+    unless (@match) {
+        say "Please put your SSH key pair in ~/.ssh/id_rsa";
+        exit;
+    }
+};
+
+system qw/chmod 600/, bsd_glob(catfile($sshdir, 'id_rsa*'));
+system qw/chmod 644/, bsd_glob(catfile($sshdir, 'id_rsa*.pub'));
+
+my $mydir = catfile($home, '.my');
+system qw/mkdir/, $mydir;
+chdir $mydir;
+system qw( git clone git@github.com:nmbooker/misc-utilities.git );
+
+sub get_options {
+    use File::Basename qw(basename);
+    use Getopt::Long;
+    use Pod::Usage;
+
+    my $prog = basename($0);  # can be used in error messages
+
+    my $options = {
+        help => 0,
+        man => 0,
+        # add further options here with their default values
+    };
+
+    Getopt::Long::Configure(qw{gnu_getopt});
+    my $parsed_ok = GetOptions(
+        'h|help'    =>  \$options->{help},
+        'man'       =>  \$options->{man},
+        # specify further options here with references to their values in the $options hashref
+    );
+
+    pod2usage(-exitval => 2) unless $parsed_ok;
+
+    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
+    # See the documentation for Pod::Usage under DESCRIPTION.
+    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
+    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
+
+    # Process remaining arguments from @ARGV here, adding results
+    # to $options.
+
+    return $options;
+}
+
+__END__
+
+=head1 NAME
+
+syssetup/init-user - BRIEF_DESCRIPTION
+
+=head1 SYNOPSIS
+
+syssetup/init-user [options]
+
+ Options:
+    -h, --help              brief help message
+    --man                   full documentation
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--help> or B<-h>
+
+Print a brief help message and exit.
+
+=item B<--man>
+
+Print the manual page and exit.
+
+
+=back
+
+=head1 DESCRIPTION
+
+B<syssetup/init-user> will ...
+
+=cut
