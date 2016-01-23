@@ -68,6 +68,10 @@ END
 
 system qw/apt-get -y install squid-deb-proxy-client/;
 
+edit_file_lines {
+    $_ = 'greeter-hide-users=false' if /^\s*#\s*greeter-hide-users=false/;
+} '/etc/lightdm/lightdm.conf';
+
 sub get_options {
     use File::Basename qw(basename);
     use Getopt::Long;
