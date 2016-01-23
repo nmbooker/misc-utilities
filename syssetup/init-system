@@ -79,7 +79,7 @@ END
 
 system qw/apt-get -y install squid-deb-proxy-client/;
 
-system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt/;
+system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt postfix/;
 
 edit_file_lines {
     $_ = 'greeter-hide-users=false' if /^\s*#\s*greeter-hide-users=false/;
