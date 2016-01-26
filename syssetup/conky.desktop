@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Exec=conky
+X-GNOME-Autostart-enabled=true
+NoDisplay=false
+Hidden=false
+Name[en_GB]=conky
+Comment[en_GB]=
+X-GNOME-Autostart-Delay=5
