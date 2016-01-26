@@ -10,6 +10,7 @@ use File::Glob qw/:bsd_glob/;
 use File::Copy qw/move/;
 use Params::Validate qw/validate/;
 use failures qw/migrate::already_link migrate::move migrate::makelink system::exit/;
+use Cwd qw/abs_path/;
 use Cwd::Guard qw/cwd_guard/;
 use Try::Tiny;
 use Carp;
@@ -69,7 +70,7 @@ sub migrate_by_link {
         }
     }
     specialising_failures(
-        do => sub { croaking_system('ln', '-s', catfile($p{to}, $base), $p{from}) },
+        do => sub { croaking_system('ln', '-s', catfile($p{to}, $base), abs_path($p{from})) },
         with => {'system::exit' => {failure => 'migrate::makelink'}},
     );
 }
