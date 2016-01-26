@@ -1,7 +1,5 @@
 #! /usr/bin/env perl
 
-# TODO: BRIEF_DESCRIPTION
-
 use v5.10;
 use warnings;
 use strict;
@@ -9,12 +7,104 @@ use autodie;
 use File::Spec::Functions qw/catfile/;
 use Sys::Hostname;
 use File::Glob qw/:bsd_glob/;
-
-my $options = get_options();
+use File::Copy qw/move/;
+use Params::Validate qw/validate/;
+use failures qw/migrate::already_link migrate::move migrate::makelink system::exit/;
+use Cwd::Guard qw/cwd_guard/;
+use Try::Tiny;
+use Carp;
+use List::Util qw/any/;
+use Safe::Isa;
+use File::Basename;
 
 my $home = $ENV{HOME} or die "HOME not set - sure you're running GNU/Linux?";
 
 my $host = hostname();
+
+my @endmessages;
+
+sub exc2warn {
+    my %p = validate(@_, {warning_about => 1, do => 1});
+    my $do = $p{do};
+    $do = [$do] unless ref($do) eq 'ARRAY';
+    for my $code (@$do) {
+        try {
+            $code->();
+        }
+        catch {
+            my $err = $_;
+            die $err unless (any { $err->$_isa($_) } @{$p{warning_about}});
+            carp $err;
+        };
+    }
+}
+
+sub in_dir {
+    my ($dir, $code) = @_;
+    my $guard = cwd_guard($dir);
+    return $code->();
+}
+
+sub migrate_by_link {
+    my %p = validate(@_, {from => 1, to => 1, mkdir => 0});
+    my $base = basename($p{from});
+    my $dest = catfile($p{to}, $base);
+    failure::migrate::already_link->throw("$p{from} is already a link")
+        if -l $p{from};
+    if ( -e $p{from} and not -e $dest) {
+        specialising_failures(
+            do => sub { croaking_system('mv', $p{from}, $dest); },
+            with => {'system::exit' => {failure => 'migrate::move',
+                                        prefix => "Could not move $p{from} to $p{to}: "}},
+        );
+    }
+    else {
+        if ($p{mkdir}) {
+            mkdir $dest;
+        }
+        else {
+            my $msg = "****  Remember to create the file $dest  ****";
+            say STDERR $msg;
+            push @endmessages, $msg;
+        }
+    }
+    specialising_failures(
+        do => sub { croaking_system('ln', '-s', catfile($p{to}, $base), $p{from}) },
+        with => {'system::exit' => {failure => 'migrate::makelink'}},
+    );
+}
+
+sub classelems { split('::', shift) }
+
+sub specialising_failures {
+    my %p = validate(@_, {with => 1, do => 1});
+    my ($failures, $code) = @p{qw/with do/};
+    try {
+        $code->()
+    }
+    catch {
+        my $err = $_;
+        for my $cls (sort { classelems($a) <=> classelems($b) } keys(%$failures)) {
+            my $origclass = "failure::$cls";
+            my $repinfo = $failures->{$cls};
+            my $replacement = "failure::".$repinfo->{failure};
+            my $prefix = $repinfo->{prefix};
+            my $msg = ($prefix ? "$prefix " : '').$err->msg;
+            $replacement->throw({msg => $msg, payload => $err->payload})
+                if $err->$_isa($origclass);
+        }
+        die $err;
+    };
+}
+sub croaking_system {
+    use autodie qw/:io/;
+    if (my $err = system(@_)) {
+        failure::system::exit->throw({
+            msg => "$_[0] exited with code $err",
+            payload => {exitcode => $err, cmd => [@_]},
+        });
+    }
+}
 
 unless (-d catfile($home, 'Private') and -d catfile($home, '.Private')) {
     my @fnek = ($host eq 'oak') ? ('--no-fnek') : ();
@@ -44,53 +134,84 @@ do {
 system qw/chmod 600/, bsd_glob(catfile($sshdir, 'id_rsa*'));
 system qw/chmod 644/, bsd_glob(catfile($sshdir, 'id_rsa*.pub'));
 
+unless (-e catfile($home, '.ssh', 'config')) {
+    say "Please put your SSH config in ~/.ssh/config";
+    exit;
+}
+
+say STDERR 'Make sure chromium, iceweasel and icedove are all completely closed, and press Enter';
+{ my $x = <STDIN> }
+
+migrate_to_private(mkdir => 1, from => $_) for qw(.mozilla .config/chromium .icedove);
+migrate_to_private(from => $_) for qw(.netrc);
+
+my $private = catfile($home, 'Private');
+
+push @endmessages, 'Remember to create ~/Private/.netrc chmod 600' unless -e catfile($private, '.netrc');
+
+sub migrate_to_private {
+    my @passthrough = @_;
+    in_dir($home => sub {
+        exc2warn(
+            do => sub { migrate_by_link(to => 'Private', @passthrough) },
+            warning_about => [map { "failure::migrate::$_" }
+                            qw/already_link move/],
+        );
+    })
+}
+
+
 my $mydir = catfile($home, '.my');
 system qw/mkdir/, $mydir;
-chdir $mydir;
-system qw( git clone git@github.com:nmbooker/misc-utilities.git );
+in_dir $mydir => sub {
+    no autodie qw/:io/;
+    system qw( git clone git@github.com:nmbooker/misc-utilities.git );
+    system qw( git clone nmb@sb1.nickbooker.uk:git/dotfiles.git );
+};
 
-sub get_options {
-    use File::Basename qw(basename);
-    use Getopt::Long;
-    use Pod::Usage;
+link_dotfile($_) for qw/.bashrc .mailrc .zshrc .vimrc .aliases .conkyrc .gitconfig/;
+my $rootca = catfile($private, 'certs', 'MyRootCA.pem');
+push @endmessages, "You will need $rootca for mail access" unless -e $rootca;
 
-    my $prog = basename($0);  # can be used in error messages
-
-    my $options = {
-        help => 0,
-        man => 0,
-        # add further options here with their default values
+sub link_dotfile {
+    my ($dotfile) = @_;
+    in_dir $home => sub {
+        my $dotfiles = catfile('.my', 'dotfiles');
+        my $name_in_repo = catfile($dotfiles, ($dotfile =~ s/^\.//r));
+        if (-e catfile($name_in_repo) and not -l $dotfile) {
+            move($dotfile, "$dotfile.orig") if (-e $dotfile);
+            system('ln', '-s', $name_in_repo, $dotfile);
+        }
     };
-
-    Getopt::Long::Configure(qw{gnu_getopt});
-    my $parsed_ok = GetOptions(
-        'h|help'    =>  \$options->{help},
-        'man'       =>  \$options->{man},
-        # specify further options here with references to their values in the $options hashref
-    );
-
-    pod2usage(-exitval => 2) unless $parsed_ok;
-
-    # Note -output defaults to *STDOUT if -exitval is 0 or 1.
-    # See the documentation for Pod::Usage under DESCRIPTION.
-    pod2usage(-exitval => 1, -verbose => 1) if $options->{help};
-    pod2usage(-exitval => 1, -verbose => 2) if $options->{man};
-
-    # Process remaining arguments from @ARGV here, adding results
-    # to $options.
-
-    return $options;
 }
+
+{
+    my $vimbundle = catfile($home, '.vim', 'bundle');
+    system qw/mkdir -p/, $vimbundle;
+    system qw( git clone git://github.com/VundleVim/Vundle.vim ), catfile($vimbundle, 'Vundle.vim');
+    system qw( vim +VundleInstall +qall );
+}
+
+
+{ no autodie qw/:io/;
+    system qw(dconf write /org/cinnamon/settings-daemon/peripherals/mouse/locate-pointer true);
+    system qw(dconf write
+        /org/gnome/libgnomekbd/keyboard/options),
+        "['altwin\taltwin:meta_alt', 'Compose key\tcompose:paus']";
+}
+
+say "--------------------------------------";
+say for @endmessages;
 
 __END__
 
 =head1 NAME
 
-syssetup/init-user - BRIEF_DESCRIPTION
+init-user - does some of my home directory setup
 
 =head1 SYNOPSIS
 
-syssetup/init-user [options]
+init-user [options]
 
  Options:
     -h, --help              brief help message
