@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Example:
+#  find backups -type f -print0 | xargs -0 mksha1sum
+# results in generating a .sha1 file next to every file under the
+# backups directory, if it doesn't already have one and isn't itself
+# a .sha1 file
+
+for file in "$@" ; do
+    dir="$(dirname "$file")"
+    base="$(basename "$file")"
+    if ! [ -f "$file" ] ; then
+        echo "Warning: not a regular file so skipping: $file" >&2
+        continue
+    fi
+    if grep -q '\.sha1$' <<< "$file"
+    then
+        echo "Warning: is a .sha1 file so skipping: $file" >&2
+        continue
+    fi
+
+    if [ -e "$file.sha1" ] ; then
+        echo "Warning: $base.sha1 already exists so skipping: $file" >&2
+    fi
+
+    ( # subshell
+        if [ -z "$dir" ] || cd "$dir" ; then
+            sha1sum -b "$base" > "${base}.sha1"
+        else
+            echo "Warning: could not change to directory $dir so skipping: $file";
+        fi
+    )
+done
