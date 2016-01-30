@@ -8,6 +8,7 @@ use strict;
 use autodie;
 use File::Slurp qw/:all :edit/;
 use List::Util qw/any/;
+use Sys::Hostname;
 
 my $options = get_options();
 
@@ -81,9 +82,13 @@ system qw/apt-get -y install squid-deb-proxy-client/;
 
 system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt postfix/;
 
+system qw/apt-get -y install firmware-ipw2x00/ if hostname() eq 'cat';
+
 edit_file_lines {
     $_ = 'greeter-hide-users=false' if /^\s*#\s*greeter-hide-users=false/;
 } '/etc/lightdm/lightdm.conf';
+
+say STDERR "\n\nYou will need to reboot for some changes to take effect";
 
 sub get_options {
     use File::Basename qw(basename);
