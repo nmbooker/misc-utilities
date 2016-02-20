@@ -201,6 +201,11 @@ sub link_dotfile {
         "['altwin\taltwin:meta_alt', 'Compose key\tcompose:paus']";
 }
 
+unless (-e catfile($home, '.config', 'autostart', 'conky.desktop')) {
+    system qw(mkdir -p), catfile($home, '.config', 'autostart');
+    system qw(cp conky.desktop), catfile($home, '.config', 'autostart', 'conky.desktop');
+}
+
 say "--------------------------------------";
 say for @endmessages;
 
