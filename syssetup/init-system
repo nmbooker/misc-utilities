@@ -80,7 +80,7 @@ END
 
 system qw/apt-get -y install squid-deb-proxy-client/;
 
-system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt postfix/;
+system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt postfix rfkill/;
 
 system qw/apt-get -y install firmware-ipw2x00/ if hostname() eq 'cat';
 
