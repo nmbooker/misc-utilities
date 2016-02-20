@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # most perl scripts use this
-sudo apt-get -y install libgetopt-long-perl libpod-usage-perl
+sudo apt-get -y install libgetopt-long-perl libpod-usage-perl libdata-munge-perl
 
 # for mboxnotify
 sudo apt-get -y install liblinux-inotify2-perl libmail-box-perl libset-scalar-perl libnotify-bin

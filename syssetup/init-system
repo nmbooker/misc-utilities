@@ -8,6 +8,7 @@ use strict;
 use autodie;
 use File::Slurp qw/:all :edit/;
 use List::Util qw/any/;
+use Data::Munge qw/elem/;
 use Sys::Hostname;
 
 my $options = get_options();
@@ -82,7 +83,9 @@ system qw/apt-get -y install squid-deb-proxy-client/;
 
 system qw/apt-get -y install xournal vim-gnome perl-doc conky s-nail mutt postfix zsh rfkill/;
 
+
 system qw/apt-get -y install firmware-ipw2x00/ if hostname() eq 'cat';
+system qw/apt-get -y install firmware-iwlwifi/ if elem(hostname(), [qw/hex jake/]);
 
 edit_file_lines {
     $_ = 'greeter-hide-users=false' if /^\s*#\s*greeter-hide-users=false/;
