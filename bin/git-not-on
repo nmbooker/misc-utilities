@@ -1,0 +1,13 @@
+#! /bin/bash
+
+# Exit with 0 and print branch name if not on the current branch
+# Exit with 1 and print nothing if it is
+
+intended_branch="$1"
+
+branch="$( git rev-parse --abbrev-ref HEAD )"
+
+if [ "$branch" == "$intended_branch" ] ; then
+    exit 1
+fi
+echo "$branch"
