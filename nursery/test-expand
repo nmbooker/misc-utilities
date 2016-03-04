@@ -1,0 +1,17 @@
+#! /bin/bash
+
+# Perform a test on a file, then expand its output if the test succeeds
+# Only works with file tests of arity 1 at the moment
+
+# SCRIPTDIR: Get the (relative) path to the script
+# SCRIPTDIR="$(dirname "$0")"
+
+test_option="$1"
+out_option="$2"
+file="$3"
+
+if test "$test_option" "$file" ; then
+    # Note this may fail if there are spaces in out_option or file
+    # Unsure how to handle this
+    echo "$out_option $file"
+fi
