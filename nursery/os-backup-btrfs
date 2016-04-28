@@ -104,7 +104,6 @@ with_lock $lockfile => sub {
                     '-z',   # compress files
                     '-R', $snapshot,
                     '-D',   # store empty directory where pruned
-                    '--min-digits', 3,
                     (map { ('-P' => $_) } @prune),
                     (map { ('-Z' => $_) } @nocompress),
                     '-3', 'sha1',   # Make sha1 hash file per slice
