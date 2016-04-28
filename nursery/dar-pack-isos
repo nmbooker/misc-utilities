@@ -112,7 +112,7 @@ sub chunk_slice_numbers($chunk) {
 }
 sub slice_number($filename) {
     my $unix_basename = basename($filename);
-    return $1 if ($unix_basename =~ /\.([0-9]+)\.dar(\.*)/);
+    return $1 if ($unix_basename =~ /\.0*([1-9][0-9]*)\.dar(\.*)/);
 }
 
 sub slices($dar_basename) { <$dar_basename.*.dar> }
