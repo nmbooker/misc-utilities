@@ -1,0 +1,12 @@
+#! /bin/bash
+
+# Output subject, begin and expiry dates for SSL server.
+# It works for pure SSL sockets, but not for STARTTLS type ones.
+
+# Usage: ssl-valid-dates HOST:PORT
+
+# Based on the business part of Sirex's solution to
+# http://superuser.com/questions/618370/check-expiry-date-of-ssl-certificate-for-multiple-remote-servers#620188
+# but generalised a bit
+
+openssl s_client -connect "$1" </dev/null 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | openssl x509 -noout -subject -dates
