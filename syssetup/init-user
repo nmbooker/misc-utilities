@@ -171,8 +171,6 @@ in_dir $mydir => sub {
 };
 
 link_dotfile($_) for qw/.bashrc .mailrc .zshrc .vimrc .aliases .conkyrc .gitconfig/;
-my $rootca = catfile($private, 'certs', 'MyRootCA.pem');
-push @endmessages, "You will need $rootca for mail access" unless -e $rootca;
 
 sub link_dotfile {
     my ($dotfile) = @_;
