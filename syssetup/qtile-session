@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Set up services that must be loaded before the WM or any of its clients
+# in order to work properly.
+eval $(gnome-keyring-daemon --start)
+export SSH_AUTH_SOCK
+
+exec /usr/local/bin/qtile "$@"
