@@ -4,11 +4,9 @@
 #  libfailures-perl libtry-tiny-perl libsafe-isa-perl liblist-moreutils-perl
 #  libscalar-list-utils-perl libio-captureoutput-perl libcwd-guard-perl
 
-use v5.20;
+use v5.16;
 use warnings;
 use strict;
-use feature 'signatures';
-no warnings 'experimental::signatures';
 use List::MoreUtils qw/uniq/;
 use List::Util qw/sum min max/;
 use File::Basename qw/basename dirname/;
@@ -39,7 +37,7 @@ my @chunks = try {
     split_with(
         elements => \@slices,
         max_chunk_size => $max_chunk_bytes,
-        elem_size_func => sub($slice) { $slice->{size} },
+        elem_size_func => sub{ shift->{size} },
     )
 }
 catch {
@@ -106,20 +104,22 @@ if (my $isobase = $options->{iso_basename}) {
     }
 }
 
-sub chunk_slice_numbers($chunk) {
+sub chunk_slice_numbers {
+    my ($chunk) = @_;
     my @slices = @$chunk;
     return map { slice_number($_->{name}) } @slices;
 }
-sub slice_number($filename) {
+sub slice_number {
+    my ($filename) = @_;
     my $unix_basename = basename($filename);
     return $1 if ($unix_basename =~ /\.0*([1-9][0-9]*)\.dar(\.*)/);
 }
 
-sub slices($dar_basename) { <$dar_basename.*.dar> }
+sub slices { my $dar_basename = shift ; <$dar_basename.*.dar> }
 
-sub slicefiles($dar_slicename) { <$dar_slicename*> }
+sub slicefiles { my $dar_slicename = shift ; <$dar_slicename*> }
 
-sub filesize(@files) { sum map { stat($_)->size } @files }
+sub filesize { sum map { stat($_)->size } @_ }
 
 sub split_with {
     # TODO: Put this into its own module
