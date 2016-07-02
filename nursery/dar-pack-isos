@@ -78,6 +78,7 @@ if (my $isobase = $options->{iso_basename}) {
         open my $cat, '>', $catpath;
         say $cat sprintf('/%s=%s', basename($_), $_) for @isolist;
         $cat->close;
+        next CHUNK if $options->{lists_only};
         my @cmd = (
             'genisoimage', '-quiet', '-V', $label, '-J', '-r',
             '-o', $isopath, '-graft-points', 
@@ -157,6 +158,7 @@ sub get_options {
         man => 0,
         print_chunkings => 0,
         iso_basename => undef,
+        lists_only => 0,
         labelbase => undef,
         hash => undef,
         slice_size => undef,
@@ -168,6 +170,7 @@ sub get_options {
         'man'       =>  \$options->{man},
         'print-chunks' => \$options->{print_chunkings},
         'c|make-isos=s' => \$options->{iso_basename},
+        'l|lists-only' => \$options->{lists_only},
         'labelbase=s' => \$options->{labelbase},
         '3|hash=s' => \$options->{hash},
         's|slice-size=i' => \$options->{slice_size},
