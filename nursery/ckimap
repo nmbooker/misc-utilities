@@ -1,0 +1,73 @@
+#!/usr/bin/env python3,
+
+"""Quick and dirty desktop IMAP notification script.
+
+Designed for people like me who prefer to poll certain mailboxes periodically
+rather than get spammed with notifications every time one comes in.
+
+And to fit in with lightweight desktop environments, or desktop environments that
+have lost their own mail notifiers.
+
+I don't suggest running this any more often than 30 minutes, at least for now.
+
+No STARTTLS compatibility at the moment, and only supports the default inbox.
+
+
+Copyright (C) 2016, Nicholas Martin Booker <nmb@nickbooker.uk>
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+
+import gi
+gi.require_version('Notify', "0.7")
+from gi.repository import Notify
+
+import imaplib
+import yaml
+import os
+import time
+
+def main(argv):
+    import argparse
+    parser = argparse.ArgumentParser(description="check IMAP account and notify if in inbox")
+    parser.add_argument('--config-file', '-c', type=argparse.FileType('rb'), default=os.path.join(os.environ['HOME'], '.config', 'ckimap', 'config.yml'), help='config file')
+    options = parser.parse_args(argv[1:])
+    conf = yaml.safe_load(options.config_file)['imap']
+    constructor = imaplib.IMAP4_SSL if conf.get('security', 'tls') == 'tls' else imaplib.IMAP4
+    poll_period = conf.get('poll-period')
+    Notify.init("imapck")   # not strictly needed yet, but I'm hoping this
+    conn = constructor(conf['host'], conf['port'])
+    conn.login(conf['username'], conf['password'])
+    conn.select(readonly=True)
+    while True:
+        typ, data = conn.search(None, 'UNSEEN')
+        num_unseen_messages = len(data[0].split())
+        if num_unseen_messages > 0:
+            timeout = conf.get('timeout')
+            notification = Notify.Notification.new(
+                "{} Unseen Messages".format(num_unseen_messages),
+                "This is an example notification.", "dialog-information")
+            if timeout:
+                notification.set_timeout(1000 * timeout)   # needed in milliseconds
+            notification.show()
+        if poll_period:
+            time.sleep(poll_period)
+        else:
+            break
+    conn.logout()
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv)
