@@ -44,10 +44,12 @@ def main(argv):
     parser.add_argument('--config-file', '-c', type=argparse.FileType('rb'), default=os.path.join(os.environ['HOME'], '.config', 'ckimap', 'config.yml'), help='config file')
     options = parser.parse_args(argv[1:])
     conf = yaml.safe_load(options.config_file)['imap']
-    constructor = imaplib.IMAP4_SSL if conf.get('security', 'tls') == 'tls' else imaplib.IMAP4
+    security = conf.get('security', 'tls')
+    constructor = imaplib.IMAP4_SSL if security == 'tls' else imaplib.IMAP4
     poll_period = conf.get('poll-period')
     Notify.init("imapck")   # not strictly needed yet, but I'm hoping this
-    conn = constructor(conf['host'], conf['port'])
+    default_port = 993 if security == 'tls' else 143
+    conn = constructor(conf['host'], conf.get('port', default_port))
     conn.login(conf['username'], conf['password'])
     conn.select(readonly=True)
     while True:
