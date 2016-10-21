@@ -51,18 +51,24 @@ def main(argv):
     default_port = 993 if security == 'tls' else 143
     conn = constructor(conf['host'], conf.get('port', default_port))
     conn.login(conf['username'], conf['password'])
-    conn.select(readonly=True)
+    notification = None
     while True:
+        conn.select(readonly=True)
         typ, data = conn.search(None, 'UNSEEN')
         num_unseen_messages = len(data[0].split())
         if num_unseen_messages > 0:
             timeout = conf.get('timeout')
-            notification = Notify.Notification.new(
-                "{} Unseen Messages".format(num_unseen_messages),
-                "This is an example notification.", "dialog-information")
+            header = "{} Unseen Messages".format(num_unseen_messages)
+            body = "INBOX: {}".format(num_unseen_messages)
+            if notification is None:
+                notification = Notify.Notification.new(header, body, "dialog-information")
+            else:
+                notification.update(header, body)
             if timeout:
                 notification.set_timeout(1000 * timeout)   # needed in milliseconds
             notification.show()
+        elif notification is not None:
+            notification.close()
         if poll_period:
             time.sleep(poll_period)
         else:
