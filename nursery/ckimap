@@ -49,12 +49,19 @@ def main(argv):
     poll_period = conf.get('poll-period')
     Notify.init("imapck")   # not strictly needed yet, but I'm hoping this
     default_port = 993 if security == 'tls' else 143
-    conn = constructor(conf['host'], conf.get('port', default_port))
-    conn.login(conf['username'], conf['password'])
+    conn = None
+    connect_each_time = conf.get('connect-each-time', False)
+    if not connect_each_time:
+        conn = connect(constructor, conf, default_port)
     notification = None
     while True:
+        if connect_each_time:
+            conn = connect(constructor, conf, default_port)
         conn.select(readonly=True)
         typ, data = conn.search(None, 'UNSEEN')
+        if connect_each_time:
+            conn.close()
+            conn.logout()
         num_unseen_messages = len(data[0].split())
         if num_unseen_messages > 0:
             timeout = conf.get('timeout')
@@ -74,6 +81,11 @@ def main(argv):
         else:
             break
     conn.logout()
+
+def connect(constructor, conf, default_port):
+    conn = constructor(conf['host'], conf.get('port', default_port))
+    conn.login(conf['username'], conf['password'])
+    return conn
 
 
 if __name__ == "__main__":
