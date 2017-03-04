@@ -1,0 +1,8 @@
+#!/usr/bin/env perl6
+
+say $*ERR: "Err1";
+say "Hello\nWorld";
+say $*ERR: "Err2";
+say "Goodbye";
+say $*ERR: "Err3";
+say "World";
