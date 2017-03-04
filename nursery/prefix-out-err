@@ -4,8 +4,8 @@ use v6;
 
 sub MAIN($prog, *@args) {
     given Proc::Async.new($prog, @args) {
-        .stdout.tap(-> $v { say "O: $_" for $v.lines});
-        .stderr.tap(-> $v { say $*ERR: "E: $_" for $v.lines });
+        .stdout.lines.tap(-> $v { say "O: $v" });
+        .stderr.lines.tap(-> $v { say $*ERR: "E: $v" });
 
         my $status = await .start;
         exit $status.exitcode;
