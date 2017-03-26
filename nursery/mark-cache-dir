@@ -1,0 +1,27 @@
+#!/bin/bash
+
+set -e
+
+prog="$(basename "$0")"
+
+
+if (( "$#" != 1 ))
+then echo "Usage: '${prog}' cachedir" >&2
+     exit 2
+fi
+cachedir="$1"
+tagpath="${cachedir}/CACHEDIR.TAG"
+
+if [ -e "$tagpath" ]
+then echo "${prog}: ${tagpath} already exists.  I will not overwrite it." >&2
+     echo "${prog}: You should check yourself that it has the correct contents" >&2
+     echo "${prog}: See v0.5 of the spec: http://www.bford.info/cachedir/spec.html"
+     exit 3
+fi
+
+cat > "$tagpath" <<EOF || exit 4
+Signature: 8a477f597d28d172789f06886806bc55
+# This file is a cache directory tag created by ${prog}.
+# For information about cache directory tags, see:
+#	http://www.brynosaurus.com/cachedir/
+EOF
