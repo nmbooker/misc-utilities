@@ -1,0 +1,38 @@
+#! /usr/bin/env python2
+
+"""Find an ancestor directory containing any of given files/patterns.
+"""
+
+import sys
+import os
+import argparse
+import glob
+from itertools import imap
+
+def main(options):
+    """Main program."""
+    while True:
+        cwd = os.getcwd()
+        if any(imap(glob.glob, options.patterns)):
+            sys.stdout.write("{}\n".format(cwd))
+            sys.exit(0)
+            break
+        if cwd == '/':
+            break
+        os.chdir('..')
+    sys.stderr.write("Error: No directory found containing any of specified patterns\n")
+    sys.exit(3)
+    return
+
+def get_options():
+    """Get options for the script."""
+    parser = argparse.ArgumentParser(
+        description="find first ancestor directory contianing filenames matching at least one PATTERN",
+    )
+    parser.add_argument('patterns', metavar='PATTERN', nargs="+")
+    options = parser.parse_args()
+    # extra processing of options here
+    return options
+
+if __name__ == "__main__":
+    main(get_options())
