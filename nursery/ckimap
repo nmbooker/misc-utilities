@@ -41,7 +41,11 @@ import time
 def main(argv):
     import argparse
     parser = argparse.ArgumentParser(description="check IMAP account and notify if in inbox")
-    parser.add_argument('--config-file', '-c', type=argparse.FileType('rb'), default=os.path.join(os.environ['HOME'], '.config', 'ckimap', 'config.yml'), help='config file')
+    parser.add_argument('--config-file', '-c',
+                        type=argparse.FileType('rb'),
+                        default=os.path.join(os.environ['HOME'],
+                                             '.config', 'ckimap', 'config.yml'),
+                        help='config file')
     options = parser.parse_args(argv[1:])
     conf = yaml.safe_load(options.config_file)['imap']
     security = conf.get('security', 'tls')
