@@ -1,0 +1,112 @@
+#!/usr/bin/perl
+
+use v5.20;
+use strict;
+use warnings;
+use Getopt::Long;
+use Pod::Usage;
+use LWP::UserAgent;
+use Set::Scalar;
+use File::Basename;
+use URI;
+use URI::Escape;
+use English;
+
+my $man = 0;
+my $help = 0;
+my @repos;
+my @architectures;
+
+GetOptions(
+    'help|h' => \$help,
+    man => \$man,
+    'arch|a=s' => \@architectures,
+    'repo|r=s' => \@repos,
+    ) or pod2usage(2);
+pod2usage(1) if $help;
+pod2usage(-exitstatus => 0, -verbose => 2) if $man;
+
+unless (@repos) {
+    pod2usage(-exitstatus => 2, -message => 'Error: no repos specified');
+}
+unless (@architectures) {
+    pod2usage(-exitstatus => 2, -message => 'Error: no architectures specified');
+}
+
+my $prog = basename($PROGRAM_NAME);
+
+my $domains = Set::Scalar->new;
+
+my $base_uri = URI->new('https://mirrors.fedoraproject.org/mirrorlist');
+
+my $ua = LWP::UserAgent->new;
+$ua->env_proxy;
+for my $r (@repos) {
+    my $repo = uri_escape($r);
+    ARCH: for my $a (@architectures) {
+        my $arch = uri_escape($a);
+        my @lines = do {
+            my $url = do {
+                my $u = $base_uri->clone;
+                $u->query_form(repo => $repo, arch => $arch);
+            $u->as_string
+            };
+
+            my $response = $ua->get($url);
+            unless ($response->is_success) {
+                say STDERR sprintf(
+                    "$prog : Error : Could not GET %s : %s",
+                    $url,
+                    $response->status_line,
+                );
+                next ARCH;
+            }
+
+            open(my $string_fh, '<', \$response->decoded_content)
+                or die "$prog : Couldn't open in-memory file: $!";
+        <$string_fh>
+        };
+        chomp for @lines;
+        for (@lines) {
+            if (/^\s*[^#[:space:]]/) {
+                my $uri = URI->new($_);
+                $domains->insert($uri->host);
+            }
+        }
+    }
+}
+
+for (sort { $a cmp $b} $domains->elements) {
+    say;
+}
+
+__END__
+
+=head1 NAME
+
+rpm-mirror-domains - Get unique list of domains providing RPM mirrors
+
+=head1 SYNOPSIS
+
+    rpm-mirror-domains -a arch [-a arch ...] -r repo [-r repo ...]
+    rpm-mirror-domains --help
+    rpm-mirror-domains --man
+
+=head1 DESCRIPTION
+
+Returns a list on STDOUT of domains that contain mirrors for any of the given architectures and repos.
+
+e.g.
+
+    distrib-coffee.ipsl.jussieu.fr
+    fedora.inode.at
+    fedora.ip-connect.vn.ua
+    fedora.mirror.wearetriple.com
+    fedora.mirrors.ovh.net
+    fedora.mirrors.telekom.ro
+    fedora.tu-chemnitz.de
+
+The produced list should be suitable for inclusion in a domain whitelist for
+Squid for example.
+
+=cut
