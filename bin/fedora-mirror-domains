@@ -98,15 +98,31 @@ Returns a list on STDOUT of domains that contain mirrors for any of the given ar
 
 e.g.
 
-    distrib-coffee.ipsl.jussieu.fr
-    fedora.inode.at
-    fedora.ip-connect.vn.ua
-    fedora.mirror.wearetriple.com
-    fedora.mirrors.ovh.net
-    fedora.mirrors.telekom.ro
-    fedora.tu-chemnitz.de
+=begin text
+
+distrib-coffee.ipsl.jussieu.fr
+fedora.inode.at
+fedora.ip-connect.vn.ua
+fedora.mirror.wearetriple.com
+fedora.mirrors.ovh.net
+fedora.mirrors.telekom.ro
+fedora.tu-chemnitz.de
+
+
+=end text
+
 
 The produced list should be suitable for inclusion in a domain whitelist for
 Squid for example.
+
+=head1 ERROR HANDLING
+
+All errors are produced on STDERR.
+
+HTTP errors fetching each mirror list are non-fatal - so the script
+could in principle return an empty list on STDOUT due to these errors
+and still claim to have succeeded.
+
+This behaviour might change.
 
 =cut
